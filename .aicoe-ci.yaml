@@ -7,3 +7,4 @@ build:
   registry-org: "thoth-station"
   registry-project: "odh-dashboard"
   registry-secret: "thoth-station-thoth-pusher-secret"
+
