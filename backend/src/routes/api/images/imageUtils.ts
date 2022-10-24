@@ -102,6 +102,7 @@ export const processImageInfo = (imageStream: ImageStream): ImageInfo => {
     tags: getTagInfo(imageStream),
     order: +annotations[IMAGE_ANNOTATIONS.IMAGE_ORDER] || 100,
     dockerImageRepo: imageStream.status?.dockerImageRepository || '',
+    labels: imageStream.metadata.labels,
   };
 
   return imageInfo;
@@ -147,6 +148,7 @@ const getTagInfo = (imageStream: ImageStream): ImageTagInfo[] => {
       name: tag.name,
       recommended: JSON.parse(tagAnnotations[IMAGE_ANNOTATIONS.RECOMMENDED] || 'false'),
       default: JSON.parse(tagAnnotations[IMAGE_ANNOTATIONS.DEFAULT] || 'false'),
+      annotations: tagAnnotations,
     };
     tagInfoArray.push(tagInfo);
   });
@@ -198,6 +200,7 @@ const mapImageStreamToBYONImage = (is: ImageStream): BYONImage => ({
   uploaded: is.metadata.creationTimestamp,
   url: is.metadata.annotations['opendatahub.io/notebook-image-url'],
   user: is.metadata.annotations['opendatahub.io/notebook-image-creator'],
+  labels: is.metadata.labels,
 });
 
 export const postImage = async (
