@@ -17,6 +17,8 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Popover,
+  Spinner,
 } from '@patternfly/react-core';
 import {
   ActionsColumn,
@@ -30,14 +32,14 @@ import {
   ExpandableRowContent,
   IAction,
 } from '@patternfly/react-table';
-import { CubesIcon, SearchIcon } from '@patternfly/react-icons';
+import { CheckIcon, CubesIcon, ExclamationTriangleIcon, SearchIcon } from '@patternfly/react-icons';
 import { BYONImage } from 'types';
-import { ImportImageModal } from './ImportImageModal';
 import { relativeTime } from '../../utilities/time';
 import './BYONImagesTable.scss';
 import { DeleteImageModal } from './DeleteBYONImageModal';
 import { UpdateImageModal } from './UpdateImageModal';
 import { updateBYONImage } from '../../services/imagesService';
+import { useNavigate } from 'react-router-dom';
 
 export type BYONImagesTableProps = {
   images: BYONImage[];
@@ -57,6 +59,8 @@ type BYONImageTableFilter = {
 };
 
 export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceUpdate }) => {
+  const navigate = useNavigate();
+
   const rowActions = (image: BYONImage): IAction[] => [
     {
       title: 'Edit',
@@ -79,6 +83,48 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
     },
   ];
 
+  const getPhase = (nb: BYONImage) => {
+    if (nb.phase === 'Succeeded')
+      return (
+        <>
+          <CheckIcon className="phase-success" /> {nb.phase}
+        </>
+      );
+    else if (nb.phase === 'Failed')
+      return (
+        <Popover
+          aria-label="Alert popover"
+          alertSeverityVariant={'warning'}
+          headerContent="Failed to load image"
+          headerIcon={ExclamationTriangleIcon}
+          headerComponent="h1"
+          bodyContent={
+            <div>
+              {nb.error?.length ? (
+                <ul>
+                  {nb.error.map((e) => (
+                    <li key={e.message}>{e.message}</li>
+                  ))}
+                </ul>
+              ) : (
+                'An unknown error has occurred.'
+              )}
+            </div>
+          }
+        >
+          <div className="phase-failed-cursor">
+            <ExclamationTriangleIcon className="phase-failed" /> {nb.phase}
+          </div>
+        </Popover>
+      );
+    else
+      return (
+        <>
+          <Spinner size="md" /> {nb.phase}
+        </>
+      );
+  };
+
   React.useEffect(() => {
     setBYONImageVisible(
       images.map((image) => {
@@ -89,7 +135,6 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
 
   const [currentImage, setcurrentImage] = React.useState<BYONImage>(images[0]);
   const [deleteImageModalVisible, setDeleteImageModalVisible] = React.useState<boolean>(false);
-  const [importImageModalVisible, setImportImageModalVisible] = React.useState<boolean>(false);
   const [updateImageModalVisible, setUpdateImageModalVisible] = React.useState<boolean>(false);
 
   const [activeSortIndex, setActiveSortIndex] = React.useState<number | undefined>(0);
@@ -138,8 +183,10 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
   const columnNames = {
     name: 'Name',
     description: 'Description',
+    status: 'Status',
+    enabled: 'Enabled',
     user: 'User',
-    uploaded: 'Uploaded',
+    uploaded: 'Updated',
   };
 
   const currentTimeStamp: number = Date.now();
@@ -167,11 +214,14 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
     <SelectOption data-id="search-filter-desc" key={2} value="description">
       Description
     </SelectOption>,
+    <SelectOption data-id="search-filter-phase" key={3} value="phase">
+      Status
+    </SelectOption>,
     <SelectOption data-id="search-filter-user" key={4} value="user">
       User
     </SelectOption>,
     <SelectOption data-id="search-filter-uploaded" key={5} value="uploaded">
-      Uploaded
+      Updated
     </SelectOption>,
   ];
   const [tableFilter, setTableFilter] = React.useState<BYONImageTableFilter>({
@@ -234,10 +284,11 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
         <Button
           data-id="import-new-image"
           onClick={() => {
-            setImportImageModalVisible(true);
+            navigate('add-new-image');
+            // setImportImageModalVisible(true);
           }}
         >
-          Import new image
+          Add new image
         </Button>
       </ToolbarItem>
     </React.Fragment>
@@ -275,13 +326,6 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
           setDeleteImageModalVisible(false);
         }}
       />
-      <ImportImageModal
-        isOpen={importImageModalVisible}
-        onCloseHandler={() => {
-          setImportImageModalVisible(false);
-        }}
-        onImportHandler={forceUpdate}
-      />
       <UpdateImageModal
         image={currentImage}
         isOpen={updateImageModalVisible}
@@ -301,11 +345,11 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
         <Thead>
           <Tr>
             <Th />
-            <Th sort={getSortParams(0)}>{columnNames.name}</Th>
-            <Th sort={getSortParams(1)}>{columnNames.description}</Th>
-            <Th>Enable</Th>
-            <Th sort={getSortParams(4)}>{columnNames.user}</Th>
-            <Th sort={getSortParams(5)}>{columnNames.uploaded}</Th>
+            {Object.values(columnNames).map((name, index) => (
+              <Th key={name} sort={getSortParams(index)}>
+                {name}
+              </Th>
+            ))}
             <Th />
           </Tr>
         </Thead>
@@ -330,6 +374,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
                   />
                   <Td dataLabel={columnNames.name}>{image.name}</Td>
                   <Td dataLabel={columnNames.description}>{image.description}</Td>
+                  <Td dataLabel={columnNames.status}>{getPhase(image)}</Td>
                   <Td>
                     <Switch
                       className="enable-switch"

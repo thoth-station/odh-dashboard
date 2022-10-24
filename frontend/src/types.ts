@@ -358,7 +358,7 @@ export type BYONImage = {
   phase?: BYONImageStatus;
   user?: string;
   uploaded?: Date;
-  error?: BYONImageError;
+  error?: BYONImageError[];
 } & BYONImageCreateRequest &
   BYONImageUpdateRequest;
 
@@ -644,3 +644,14 @@ export type NotebookData = {
 };
 
 export type UsernameMap<V> = { [username: string]: V };
+
+export type gpuScale = {
+  availableScale: number;
+  gpuNumber: number;
+};
+
+export type GPUInfo = {
+  configured: boolean;
+  available: number;
+  autoscalers: gpuScale[];
+};
