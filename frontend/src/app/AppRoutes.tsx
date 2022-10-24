@@ -51,7 +51,7 @@ const AppRoutes: React.FC = () => {
           element={<NotebookLogoutRedirectPage />}
         />
         <Route path="/modelServing/*" element={<ModelServingRoutes />} />
-        {isAdmin && <Route path="/notebookImages" element={<BYONImagesPage />} />}
+        {isAdmin && <Route path="/notebookImages/*" element={<BYONImagesPage />} />}
         {isAdmin && <Route path="/clusterSettings" element={<ClusterSettingsPage />} />}
         {isAdmin && <Route path="/groupSettings" element={<GroupSettingsPage />} />}
         <Route path="*" element={<NotFound />} />
