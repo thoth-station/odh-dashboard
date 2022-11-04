@@ -49,7 +49,7 @@
         name: proxy-tls
       - mountPath: /etc/oauth/config
         name: oauth-config
-
+        
 - op: add
   path: /spec/template/spec/volumes
   value:
