@@ -437,7 +437,8 @@ export type BYONImage = {
   phase?: BYONImageStatus;
   user?: string;
   uploaded?: Date;
-  error?: BYONImageError;
+  error?: BYONImageError[];
+  labels?: { [key: string]: string };
 } & BYONImageCreateRequest &
   BYONImageUpdateRequest;
 
@@ -539,6 +540,7 @@ export type ImageTagInfo = {
   content: TagContent;
   recommended: boolean;
   default: boolean;
+  annotations: { [key: string]: string; };
 };
 
 export type ImageInfo = {
@@ -550,6 +552,8 @@ export type ImageInfo = {
   default?: boolean;
   order?: number;
   dockerImageRepo?: string;
+  labels?: { [key: string]: string };
+
 };
 
 export type ImageType = 'byon' | 'jupyter' | 'other';

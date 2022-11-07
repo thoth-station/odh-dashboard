@@ -27,14 +27,21 @@ export const useWatchBYONImages = (): {
 
   React.useEffect(() => {
     let watchHandle;
+    let cancelled = false;
     const watchImages = () => {
       fetchBYONImages()
         .then((data: BYONImage[]) => {
+          if (cancelled) {
+            return;
+          }
           setLoaded(true);
           setLoadError(undefined);
           setImages(data);
         })
         .catch((e) => {
+          if (cancelled) {
+            return;
+          }
           setLoadError(e);
         });
       watchHandle = setTimeout(watchImages, POLL_INTERVAL);
@@ -43,6 +50,7 @@ export const useWatchBYONImages = (): {
 
     return () => {
       if (watchHandle) {
+        cancelled = true;
         clearTimeout(watchHandle);
       }
     };

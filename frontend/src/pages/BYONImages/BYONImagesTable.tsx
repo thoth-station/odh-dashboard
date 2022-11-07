@@ -17,6 +17,8 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Popover,
+  Spinner,
 } from '@patternfly/react-core';
 import {
   ActionsColumn,
@@ -30,14 +32,13 @@ import {
   ExpandableRowContent,
   IAction,
 } from '@patternfly/react-table';
-import { CubesIcon, SearchIcon } from '@patternfly/react-icons';
+import { CheckIcon, CubesIcon, ExclamationTriangleIcon, SearchIcon } from '@patternfly/react-icons';
 import { BYONImage } from 'types';
-import { ImportImageModal } from './ImportImageModal';
 import { relativeTime } from '../../utilities/time';
 import './BYONImagesTable.scss';
 import { DeleteImageModal } from './DeleteBYONImageModal';
-import { UpdateImageModal } from './UpdateImageModal';
 import { updateBYONImage } from '../../services/imagesService';
+import { useNavigate } from 'react-router-dom';
 
 export type BYONImagesTableProps = {
   images: BYONImage[];
@@ -57,13 +58,14 @@ type BYONImageTableFilter = {
 };
 
 export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceUpdate }) => {
+  const navigate = useNavigate();
+
   const rowActions = (image: BYONImage): IAction[] => [
     {
       title: 'Edit',
       id: `${image.name}-edit-button`,
       onClick: () => {
-        setcurrentImage(image);
-        setUpdateImageModalVisible(true);
+        navigate('edit-image', { state: { image: image } });
       },
     },
     {
@@ -79,18 +81,63 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
     },
   ];
 
+  const getPhase = (nb: BYONImage) => {
+    if (nb.phase === 'Succeeded')
+      return (
+        <>
+          <CheckIcon className="phase-success" /> {nb.phase}
+        </>
+      );
+    else if (nb.phase === 'Failed')
+      return (
+        <Popover
+          aria-label="Alert popover"
+          alertSeverityVariant={'warning'}
+          headerContent="Failed to load image"
+          headerIcon={<ExclamationTriangleIcon/>}
+          removeFindDomNode
+          headerComponent="h1"
+          bodyContent={
+            <div>
+              {nb.error?.length ? (
+                <ul>
+                  {nb.error.map((e) => (
+                    <li key={e.message}>{e.message}</li>
+                  ))}
+                </ul>
+              ) : (
+                'An unknown error has occurred.'
+              )}
+            </div>
+          }
+        >
+          <div className="phase-failed-cursor">
+            <ExclamationTriangleIcon className="phase-failed" /> {nb.phase}
+          </div>
+        </Popover>
+      );
+    else
+      return (
+        <>
+          <Spinner size="md" /> {nb.phase}
+        </>
+      );
+  };
+
   React.useEffect(() => {
     setBYONImageVisible(
       images.map((image) => {
         return { id: image.id, visible: image.visible };
       }),
     );
+
+    return () => {
+      setBYONImageVisible([]); // This worked for me
+    };
   }, [images]);
 
   const [currentImage, setcurrentImage] = React.useState<BYONImage>(images[0]);
   const [deleteImageModalVisible, setDeleteImageModalVisible] = React.useState<boolean>(false);
-  const [importImageModalVisible, setImportImageModalVisible] = React.useState<boolean>(false);
-  const [updateImageModalVisible, setUpdateImageModalVisible] = React.useState<boolean>(false);
 
   const [activeSortIndex, setActiveSortIndex] = React.useState<number | undefined>(0);
   const [activeSortDirection, setActiveSortDirection] = React.useState<'asc' | 'desc' | undefined>(
@@ -138,8 +185,10 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
   const columnNames = {
     name: 'Name',
     description: 'Description',
+    status: 'Status',
+    enabled: 'Enabled',
     user: 'User',
-    uploaded: 'Uploaded',
+    uploaded: 'Updated',
   };
 
   const currentTimeStamp: number = Date.now();
@@ -167,11 +216,14 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
     <SelectOption data-id="search-filter-desc" key={2} value="description">
       Description
     </SelectOption>,
+    <SelectOption data-id="search-filter-phase" key={3} value="phase">
+      Status
+    </SelectOption>,
     <SelectOption data-id="search-filter-user" key={4} value="user">
       User
     </SelectOption>,
     <SelectOption data-id="search-filter-uploaded" key={5} value="uploaded">
-      Uploaded
+      Updated
     </SelectOption>,
   ];
   const [tableFilter, setTableFilter] = React.useState<BYONImageTableFilter>({
@@ -236,10 +288,10 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
         <Button
           data-id="import-new-image"
           onClick={() => {
-            setImportImageModalVisible(true);
+            navigate('add-new-image');
           }}
         >
-          Import new image
+          Add new image
         </Button>
       </ToolbarItem>
     </React.Fragment>
@@ -277,21 +329,6 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
           setDeleteImageModalVisible(false);
         }}
       />
-      <ImportImageModal
-        isOpen={importImageModalVisible}
-        onCloseHandler={() => {
-          setImportImageModalVisible(false);
-        }}
-        onImportHandler={forceUpdate}
-      />
-      <UpdateImageModal
-        image={currentImage}
-        isOpen={updateImageModalVisible}
-        onUpdateHandler={forceUpdate}
-        onCloseHandler={() => {
-          setUpdateImageModalVisible(false);
-        }}
-      />
       <Toolbar data-id="toolbar-items">
         <ToolbarContent>{items}</ToolbarContent>
       </Toolbar>
@@ -303,22 +340,24 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
         <Thead>
           <Tr>
             <Th />
-            <Th sort={getSortParams(0)}>{columnNames.name}</Th>
-            <Th sort={getSortParams(1)}>{columnNames.description}</Th>
-            <Th>Enable</Th>
-            <Th sort={getSortParams(4)}>{columnNames.user}</Th>
-            <Th sort={getSortParams(5)}>{columnNames.uploaded}</Th>
+            {Object.values(columnNames).map((name, index) => (
+              <Th key={name} sort={getSortParams(index)}>
+                {name}
+              </Th>
+            ))}
             <Th />
           </Tr>
         </Thead>
         {tableFilter.count > 0 ? (
           images.map((image, rowIndex) => {
             const packages: React.ReactNode[] = [];
-            image.packages?.forEach((nbpackage) => {
-              packages.push(<p>{`${nbpackage.name} ${nbpackage.version}`}</p>);
+            image.packages?.forEach((nbpackage, i) => {
+              packages.push(
+                <p key={nbpackage.name + i}>{`${nbpackage.name} ${nbpackage.version}`}</p>,
+              );
             });
             return (
-              <Tbody key={image.name} isExpanded={isBYONImageExpanded(image)}>
+              <Tbody key={image.name + rowIndex} isExpanded={isBYONImageExpanded(image)}>
                 <Tr isHidden={applyTableFilter(image)}>
                   <Td
                     expand={{
@@ -329,6 +368,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
                   />
                   <Td dataLabel={columnNames.name}>{image.name}</Td>
                   <Td dataLabel={columnNames.description}>{image.description}</Td>
+                  <Td dataLabel={columnNames.status}>{getPhase(image)}</Td>
                   <Td>
                     <Switch
                       className="enable-switch"
