@@ -298,17 +298,21 @@ export const postCNBI = async (
     },
     spec: spec
   }
-
+  console.log("----")
   try {
     await customObjectsApi.createNamespacedCustomObject(
       'meteor.zone',
       'v1alpha1',
       namespace,
-      'crds',
+      'customnbimages',
       payload,
     );
+
+
     return { success: true, error: null };
   } catch (e) {
+    console.log(e)
+
     if (e.response?.statusCode !== 404) {
       fastify.log.error('Unable to add CNBI custom resource: ' + e.toString());
       return { success: false, error: 'Unable to add CNBI custom resource: ' + e.message };
