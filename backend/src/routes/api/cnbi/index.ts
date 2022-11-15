@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ImageType } from '../../../types';
-import { postImage, deleteImage, getImageList, updateImage } from './cnbiUtils';
+import { postCNBI, deleteImage, getImageList, updateImage } from './cnbiUtils';
 import { secureAdminRoute, secureRoute } from '../../../utils/route-security';
 
 export default async (fastify: FastifyInstance): Promise<void> => {
@@ -59,7 +59,7 @@ export default async (fastify: FastifyInstance): Promise<void> => {
   fastify.post(
     '/',
     secureAdminRoute(fastify)(async (request: FastifyRequest, reply: FastifyReply) => {
-      return postImage(fastify, request)
+      return postCNBI(fastify, request)
         .then((res) => {
           return res;
         })

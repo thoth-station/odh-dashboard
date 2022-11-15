@@ -12,10 +12,11 @@ import {
   BYONImagePackage,
   BYONImage,
   BYONImageStatus,
-  CNBIcrd,
-  CNBICRDCreateRequest,
-  CNBIBuildType,
-  CNBIImportSpec
+  CNBICrd,
+  CNBICrdCreateRequest,
+  CNBIBuildSpec,
+  CNBIImportSpec,
+  CNBIExistingSpec
 } from '../../../types';
 import { FastifyRequest } from 'fastify';
 import createError from 'http-errors';
@@ -213,11 +214,11 @@ export const postCNBI = async (
 ): Promise<{ success: boolean; error: string }> => {
   const customObjectsApi = fastify.kube.customObjectsApi;
   const namespace = fastify.kube.namespace;
-  const body = request.body as CNBICRDCreateRequest;
+  const body = request.body as CNBICrdCreateRequest;
   const labels = {
     'app.kubernetes.io/created-by': 'cpe-_a-meteor.zone-CNBi-v0.1.0'
   };
-  // const imageStreams = (await getImageStreams(fastify, labels)) as ImageStream[];
+  // const imageStreams = (await getCRDs(fastify, labels)) as ImageStream[];
   // const validName = imageStreams.filter((is) => is.metadata.name === body.name);
 
   // if (validName.length > 0) {
@@ -225,40 +226,92 @@ export const postCNBI = async (
   //   return { success: false, error: 'Unable to add CRD: ' + body.name };
   // }
 
-  const payload: CNBIcrd = {
+
+  let spec: CNBIImportSpec | CNBIExistingSpec | CNBIBuildSpec;
+  switch(body.type) {
+    case "import":
+      if(!body.fromImage) {
+        return { success: false, error: "Parameter 'fromImage' is expected when using type=import" };
+      }
+
+      spec = {
+        buildType: "ImageImport",
+        fromImage: body.fromImage,
+      } as CNBIImportSpec
+
+      if(body.imagePullSecretName) {
+        spec["imagePullSecret"] = {
+          name: body.imagePullSecretName
+        }
+      }
+      break;
+
+    case "existing":
+      if(!body.baseImage) {
+        return { success: false, error: "Parameter 'baseImage' is expected when using type=existing" };
+      }
+
+      spec = {
+        buildType: "PackageList",
+        baseImage: body.baseImage,
+        packageVersions: body.packages.map(pkg => {
+          if(pkg.version) {
+            return `${pkg.name}==${pkg.version}`
+          }
+          else {
+            return pkg.name
+          }
+        })
+      } as CNBIExistingSpec
+      break;
+
+    case "build":
+      let pkgs: string[] = []
+      if(body.requirements) {
+         pkgs = body.requirements.split('\n')
+        pkgs.map(pkg => pkg.trim())
+      }
+
+      spec = {
+        buildType: "PackageList",
+        runtimeEnvironment: {
+          osName: "ubi",
+          osVersion: "8",
+          pythonVersion: "3.8"
+        },
+        packageVersions: pkgs
+      } as CNBIBuildSpec
+      break;
+  }
+
+  const payload: CNBICrd = {
     kind: 'CustomNBImage',
     apiVersion: 'meteor.zone/v1alpha1',
     metadata: {
       annotations: {
-        'opendatahub.io/notebook-image-desc': body.description ? body.description : '',
+        'opendatahub.io/notebook-image-desc': body.description ?? '',
         'opendatahub.io/notebook-image-name': body.name,
         'opendatahub.io/notebook-image-creator': body.creator,
       },
       name: `cnbi-${Date.now()}`,
       labels: labels,
     },
-    spec: {
-      buildType: "ImageImport",
-      fromImage: "abc",
-      imagePullSecret: {
-            name: "abc"
-    }
-      }
-    }
+    spec: spec
+  }
 
   try {
     await customObjectsApi.createNamespacedCustomObject(
       'meteor.zone',
       'v1alpha1',
-      'crds',
       namespace,
+      'crds',
       payload,
     );
     return { success: true, error: null };
   } catch (e) {
     if (e.response?.statusCode !== 404) {
-      fastify.log.error('Unable to add notebook image: ' + e.toString());
-      return { success: false, error: 'Unable to add notebook image: ' + e.message };
+      fastify.log.error('Unable to add CNBI custom resource: ' + e.toString());
+      return { success: false, error: 'Unable to add CNBI custom resource: ' + e.message };
     }
   }
 };

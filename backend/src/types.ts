@@ -518,6 +518,63 @@ export type ImageStream = {
   status?: ImageStreamStatus;
 } & K8sResourceCommon;
 
+
+// export type CNBIBuildType = "ImageImport" | "PackageList";
+
+export type CNBIImportSpec = {
+  buildType: "ImageImport";
+  fromImage: string;
+  imagePullSecret?: {
+        name: string;
+  }
+}
+
+export type CNBIExistingSpec = {
+  buildType: "PackageList";
+  baseImage: string;
+  packageVersions?: string[]
+}
+
+export type CNBIBuildSpec = {
+  buildType: "PackageList";
+  runtimeEnvironment: {
+    osName: string
+    osVersion: string
+    pythonVersion: string
+  }
+  packageVersions?: string[]
+}
+
+export type CNBICrd = {
+  apiVersion?: string;
+  kind?: string;
+  metadata: {
+    name: string;
+    labels?: { [key: string]: string };
+    annotations?: { [key: string]: string };
+  };
+  spec: CNBIImportSpec | CNBIExistingSpec | CNBIBuildSpec ;
+};
+
+export type CNBICrdCreateRequest = {
+  type: "build" | "import" | "existing";
+  name: string;
+  description?: string;
+  creator: string;
+  user: string;
+  fromImage?: string;
+  imagePullSecretName?: string
+  runtimeEnvironment?: {
+    osName: string
+    osVersion: string
+    pythonVersion: string
+  },
+  baseImage?: string,
+  software?: BYONImagePackage[];
+  packages?: BYONImagePackage[];
+  requirements?: string;
+};
+
 export type ImageStreamList = {
   apiVersion?: string;
   kind?: string;
