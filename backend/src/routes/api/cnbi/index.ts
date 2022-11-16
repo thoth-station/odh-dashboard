@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ImageType } from '../../../types';
-import { postCNBI, deleteImage, getImageList, updateImage } from './cnbiUtils';
+import { postCNBI, deleteCNBICrd, getImageList, updateImage } from './cnbiUtils';
 import { secureAdminRoute, secureRoute } from '../../../utils/route-security';
 
 export default async (fastify: FastifyInstance): Promise<void> => {
@@ -31,9 +31,9 @@ export default async (fastify: FastifyInstance): Promise<void> => {
   );
 
   fastify.delete(
-    '/:image',
+    '/:crd',
     secureAdminRoute(fastify)(async (request: FastifyRequest, reply: FastifyReply) => {
-      return deleteImage(fastify, request)
+      return deleteCNBICrd(fastify, request)
         .then((res) => {
           return res;
         })

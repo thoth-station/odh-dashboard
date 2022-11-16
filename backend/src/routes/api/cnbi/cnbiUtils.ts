@@ -320,22 +320,21 @@ export const postCNBI = async (
   }
 };
 
-export const deleteImage = async (
+export const deleteCNBICrd = async (
   fastify: KubeFastifyInstance,
   request: FastifyRequest,
 ): Promise<{ success: boolean; error: string }> => {
   const customObjectsApi = fastify.kube.customObjectsApi;
   const namespace = fastify.kube.namespace;
-  const params = request.params as { image: string };
-
+  const params = request.params as { crd: string };
   try {
     await customObjectsApi
       .deleteNamespacedCustomObject(
-        'image.openshift.io',
-        'v1',
+        'meteor.zone',
+        'v1alpha1',
         namespace,
-        'imagestreams',
-        params.image,
+        'customnbimages',
+        params.crd,
       )
       .catch((e) => {
         throw createError(e.statusCode, e?.body?.message);
@@ -343,99 +342,8 @@ export const deleteImage = async (
     return { success: true, error: null };
   } catch (e) {
     if (e.response?.statusCode !== 404) {
-      fastify.log.error('Unable to delete notebook image: ' + e.toString());
-      return { success: false, error: 'Unable to delete notebook image: ' + e.message };
-    }
-  }
-};
-
-export const updateImage = async (
-  fastify: KubeFastifyInstance,
-  request: FastifyRequest,
-): Promise<{ success: boolean; error: string }> => {
-  const customObjectsApi = fastify.kube.customObjectsApi;
-  const namespace = fastify.kube.namespace;
-  const params = request.params as { image: string };
-  const body = request.body as BYONImageUpdateRequest;
-  const labels = {
-    'app.kubernetes.io/created-by': 'byon',
-    'opendatahub.io/notebook-image': 'true',
-  };
-
-  const imageStreams = await getImageStreams(fastify, labels);
-  const validName = imageStreams.filter(
-    (is) =>
-      is.metadata.annotations['opendatahub.io/notebook-image-name'] === body.name &&
-      is.metadata.name !== body.id,
-  );
-
-  if (validName.length > 0) {
-    fastify.log.error('Duplicate name unable to add notebook image');
-    return { success: false, error: 'Unable to add notebook image: ' + body.name };
-  }
-
-  try {
-    const imageStream = await customObjectsApi
-      .getNamespacedCustomObject(
-        'image.openshift.io',
-        'v1',
-        namespace,
-        'imagestreams',
-        params.image,
-      )
-      .then((r) => r.body as ImageStream)
-      .catch((e) => {
-        throw createError(e.statusCode, e?.body?.message);
-      });
-
-    if (body.packages && imageStream.spec.tags) {
-      imageStream.spec.tags[0].annotations['opendatahub.io/notebook-python-dependencies'] =
-        JSON.stringify(body.packages);
-    }
-
-    if (body.software && imageStream.spec.tags) {
-      imageStream.spec.tags[0].annotations['opendatahub.io/notebook-software'] = JSON.stringify(
-        body.software,
-      );
-    }
-
-    if (typeof body.visible !== undefined) {
-      if (body.visible) {
-        imageStream.metadata.labels['opendatahub.io/notebook-image'] = 'true';
-      } else {
-        imageStream.metadata.labels['opendatahub.io/notebook-image'] = 'false';
-      }
-    }
-    if (body.name) {
-      imageStream.metadata.annotations['opendatahub.io/notebook-image-name'] = body.name;
-    }
-
-    if (body.description !== undefined) {
-      imageStream.metadata.annotations['opendatahub.io/notebook-image-desc'] = body.description;
-    }
-
-    await customObjectsApi
-      .patchNamespacedCustomObject(
-        'image.openshift.io',
-        'v1',
-        namespace,
-        'imagestreams',
-        params.image,
-        imageStream,
-        undefined,
-        undefined,
-        undefined,
-        {
-          headers: { 'Content-Type': 'application/merge-patch+json' },
-        },
-      )
-      .catch((e) => console.error(e));
-
-    return { success: true, error: null };
-  } catch (e) {
-    if (e.response?.statusCode !== 404) {
-      fastify.log.error('Unable to update notebook image: ' + e.toString());
-      return { success: false, error: 'Unable to update notebook image: ' + e.message };
+      fastify.log.error('Unable to delete cnbi crd: ' + e.toString());
+      return { success: false, error: 'Unable to delete cnbi crd: ' + e.message };
     }
   }
 };
