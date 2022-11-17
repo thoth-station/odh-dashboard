@@ -32,40 +32,47 @@ import {
   ExpandableRowContent,
   IAction,
 } from '@patternfly/react-table';
-import { CheckIcon, CubesIcon, ExclamationTriangleIcon, SearchIcon } from '@patternfly/react-icons';
-import { BYONImage } from 'types';
-import { relativeTime } from '../../utilities/time';
-import './BYONImagesTable.scss';
-import { DeleteImageModal } from './DeleteBYONImageModal';
-import { updateBYONImage } from '../../services/imagesService';
+import {
+  CheckIcon,
+  CubesIcon,
+  ExclamationTriangleIcon,
+  SearchIcon,
+  UnknownIcon,
+} from '@patternfly/react-icons';
+import { CREDetails } from 'types';
+import { relativeTime } from '../../../utilities/time';
+import './CREResourcesTable.scss';
+import { DeleteCREResourceModal } from './DeleteCREResourceModal';
+import { updateCREImageStream } from '../../../services/creServices';
 import { useNavigate } from 'react-router-dom';
 
-export type BYONImagesTableProps = {
-  images: BYONImage[];
+export type CREResourcesTableProps = {
+  resources: CREDetails[];
   forceUpdate: () => void;
 };
 
-type BYONImageEnabled = {
+type CREResourceEnabled = {
   id: string;
   visible?: boolean;
 };
 
-type BYONImageTableFilterOptions = 'user' | 'name' | 'description' | 'phase' | 'user' | 'uploaded';
-type BYONImageTableFilter = {
+type CREResourceTableFilterOptions = 'user' | 'name' | 'description' | 'phase' | 'uploaded';
+type CREResourceTableFilter = {
   filter: string;
-  option: BYONImageTableFilterOptions;
+  option: CREResourceTableFilterOptions;
   count: number;
 };
 
-export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceUpdate }) => {
+export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources, forceUpdate }) => {
   const navigate = useNavigate();
 
-  const rowActions = (image: BYONImage): IAction[] => [
+  const rowActions = (resource: CREDetails): IAction[] => [
     {
       title: 'Edit',
-      id: `${image.name}-edit-button`,
+      id: `${resource.name}-edit-button`,
+      disabled: !resource.hasImage,
       onClick: () => {
-        navigate('edit-image', { state: { image: image } });
+        navigate('edit-resource', { state: { resource: resource } });
       },
     },
     {
@@ -73,15 +80,15 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
     },
     {
       title: 'Delete',
-      id: `${image.name}-delete-button`,
+      id: `${resource.name}-delete-button`,
       onClick: () => {
-        setcurrentImage(image);
-        setDeleteImageModalVisible(true);
+        setCurrentResource(resource);
+        setDeleteResourceModalVisible(true);
       },
     },
   ];
 
-  const getPhase = (nb: BYONImage) => {
+  const getPhase = (nb: CREDetails) => {
     if (nb.phase === 'Succeeded')
       return (
         <>
@@ -93,8 +100,8 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
         <Popover
           aria-label="Alert popover"
           alertSeverityVariant={'warning'}
-          headerContent="Failed to load image"
-          headerIcon={<ExclamationTriangleIcon/>}
+          headerContent="Failed to load resource"
+          headerIcon={<ExclamationTriangleIcon />}
           removeFindDomNode
           headerComponent="h1"
           bodyContent={
@@ -116,28 +123,36 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
           </div>
         </Popover>
       );
-    else
+    else if (nb.phase === 'Running')
       return (
         <>
           <Spinner size="md" /> {nb.phase}
         </>
       );
+    else {
+      return (
+        <>
+          <UnknownIcon />
+        </>
+      );
+    }
   };
 
   React.useEffect(() => {
-    setBYONImageVisible(
-      images.map((image) => {
-        return { id: image.id, visible: image.visible };
+    setCREResourceVisible(
+      resources.map((resource) => {
+        return { id: resource.id, visible: resource.visible };
       }),
     );
 
     return () => {
-      setBYONImageVisible([]); // This worked for me
+      setCREResourceVisible([]); // This worked for me
     };
-  }, [images]);
+  }, [resources]);
 
-  const [currentImage, setcurrentImage] = React.useState<BYONImage>(images[0]);
-  const [deleteImageModalVisible, setDeleteImageModalVisible] = React.useState<boolean>(false);
+  const [currentResource, setCurrentResource] = React.useState<CREDetails>(resources[0]);
+  const [deleteResourceModalVisible, setDeleteResourceModalVisible] =
+    React.useState<boolean>(false);
 
   const [activeSortIndex, setActiveSortIndex] = React.useState<number | undefined>(0);
   const [activeSortDirection, setActiveSortDirection] = React.useState<'asc' | 'desc' | undefined>(
@@ -146,19 +161,19 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
 
   const getFilterCount = (value: string, option): number => {
     let total = 0;
-    images.forEach((image) => {
-      (image[option] as string).includes(value) ? total++ : null;
+    resources.forEach((resource) => {
+      (resource[option] as string).includes(value) ? total++ : null;
     });
     return total;
   };
 
-  const getSortableRowValues = (nb: BYONImage): string[] => {
+  const getSortableRowValues = (nb: CREDetails): string[] => {
     const { name, description = '', phase = '', visible = false, user = '', uploaded = '' } = nb;
     return [name, description, phase, visible.toString(), user, uploaded.toString()];
   };
 
   if (activeSortIndex !== undefined) {
-    [...images].sort((a, b) => {
+    [...resources].sort((a, b) => {
       const aValue = getSortableRowValues(a)[activeSortIndex];
       const bValue = getSortableRowValues(b)[activeSortIndex];
 
@@ -193,19 +208,19 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
 
   const currentTimeStamp: number = Date.now();
 
-  const [expandedBYONImageIDs, setExpandedBYONImageIDs] = React.useState<string[]>([]);
-  const setBYONImageExpanded = (image: BYONImage, isExpanding = true) => {
-    setExpandedBYONImageIDs((prevExpanded) => {
-      const otherExpandedRepoNames = prevExpanded.filter((r) => r !== image.id);
-      return isExpanding ? [...otherExpandedRepoNames, image.id] : otherExpandedRepoNames;
+  const [expandedCREResourceIDs, setExpandedCREResourceIDs] = React.useState<string[]>([]);
+  const setCREResourceExpanded = (resource: CREDetails, isExpanding = true) => {
+    setExpandedCREResourceIDs((prevExpanded) => {
+      const otherExpandedRepoNames = prevExpanded.filter((r) => r !== resource.id);
+      return isExpanding ? [...otherExpandedRepoNames, resource.id] : otherExpandedRepoNames;
     });
   };
-  const isBYONImageExpanded = (image: BYONImage) => {
-    return expandedBYONImageIDs.includes(image.id);
+  const isCREResourceExpanded = (resource: CREDetails) => {
+    return expandedCREResourceIDs.includes(resource.id);
   };
-  const [BYONImageVisible, setBYONImageVisible] = React.useState<BYONImageEnabled[]>(
-    images.map((image) => {
-      return { id: image.id, visible: image.visible };
+  const [CREResourceVisible, setCREResourceVisible] = React.useState<CREResourceEnabled[]>(
+    resources.map((resource) => {
+      return { id: resource.id, visible: resource.visible };
     }),
   );
 
@@ -226,10 +241,10 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
       Updated
     </SelectOption>,
   ];
-  const [tableFilter, setTableFilter] = React.useState<BYONImageTableFilter>({
+  const [tableFilter, setTableFilter] = React.useState<CREResourceTableFilter>({
     filter: '',
     option: 'name',
-    count: images.length,
+    count: resources.length,
   });
   const [selected, setSelected] = React.useState('name');
   const [tableSelectIsOpen, setTableSelectIsOpen] = React.useState(false);
@@ -241,7 +256,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
           removeFindDomNode
           data-id="search-filter-select"
           variant={SelectVariant.single}
-          aria-label="Select for image images table"
+          aria-label="Select for resource resources table"
           onToggle={(isExpanded) => {
             setTableSelectIsOpen(isExpanded);
           }}
@@ -250,7 +265,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
             const newCount = getFilterCount(tableFilter.filter, value);
             setTableFilter({
               filter: tableFilter.filter,
-              option: value as BYONImageTableFilterOptions,
+              option: value as CREResourceTableFilterOptions,
               count: newCount,
             });
           }}
@@ -265,7 +280,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
           removeFindDomNode
           data-id="search-filter-input"
           className="filter-search"
-          aria-label="search input for image images table"
+          aria-label="search input for resource resources table"
           value={tableFilter.filter}
           onChange={(value) => {
             const newCount = getFilterCount(value, tableFilter.option);
@@ -279,54 +294,54 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
             setTableFilter({
               filter: '',
               option: tableFilter.option,
-              count: images.length,
+              count: resources.length,
             });
           }}
         />
       </ToolbarItem>
       <ToolbarItem>
         <Button
-          data-id="import-new-image"
+          data-id="import-new-resource"
           onClick={() => {
-            navigate('add-new-image');
+            navigate('add-new-resource');
           }}
         >
-          Add new image
+          Add new resource
         </Button>
       </ToolbarItem>
     </React.Fragment>
   );
 
-  const applyTableFilter = (image: BYONImage): boolean => {
+  const applyTableFilter = (resource: CREDetails): boolean => {
     if (
       tableFilter.filter !== '' &&
-      image[tableFilter.option] &&
+      resource[tableFilter.option] &&
       tableFilter.option !== 'uploaded'
     ) {
-      const BYONImageValue: string = image[tableFilter.option] as string;
-      return !BYONImageValue.includes(tableFilter.filter);
+      const CREResourceValue: string = resource[tableFilter.option] as string;
+      return !CREResourceValue.includes(tableFilter.filter);
     }
     if (
       tableFilter.filter !== '' &&
-      image[tableFilter.option] &&
+      resource[tableFilter.option] &&
       tableFilter.option === 'uploaded'
     ) {
-      const BYONImageValue: string = relativeTime(
+      const CREResourceValue: string = relativeTime(
         currentTimeStamp,
-        new Date(image.uploaded as Date).getTime(),
+        new Date(resource.uploaded as Date).getTime(),
       );
-      return !BYONImageValue.includes(tableFilter.filter);
+      return !CREResourceValue.includes(tableFilter.filter);
     }
     return false;
   };
   return (
     <React.Fragment>
-      <DeleteImageModal
-        image={currentImage}
-        isOpen={deleteImageModalVisible}
+      <DeleteCREResourceModal
+        resource={currentResource}
+        isOpen={deleteResourceModalVisible}
         onDeleteHandler={forceUpdate}
         onCloseHandler={() => {
-          setDeleteImageModalVisible(false);
+          setDeleteResourceModalVisible(false);
         }}
       />
       <Toolbar data-id="toolbar-items">
@@ -334,7 +349,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
       </Toolbar>
       <TableComposable
         className={tableFilter.count === 0 ? 'empty-table' : ''}
-        aria-label="Notebook images table"
+        aria-label="Notebook resources table"
         variant="compact"
       >
         <Thead>
@@ -349,45 +364,45 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
           </Tr>
         </Thead>
         {tableFilter.count > 0 ? (
-          images.map((image, rowIndex) => {
+          resources.map((resource, rowIndex) => {
             const packages: React.ReactNode[] = [];
-            image.packages?.forEach((nbpackage, i) => {
+            resource.packageAnnotations?.forEach((nbpackage, i) => {
               packages.push(
                 <p key={nbpackage.name + i}>{`${nbpackage.name} ${nbpackage.version}`}</p>,
               );
             });
             return (
-              <Tbody key={image.name + rowIndex} isExpanded={isBYONImageExpanded(image)}>
-                <Tr isHidden={applyTableFilter(image)}>
+              <Tbody key={resource.name + rowIndex} isExpanded={isCREResourceExpanded(resource)}>
+                <Tr isHidden={applyTableFilter(resource)}>
                   <Td
                     expand={{
                       rowIndex,
-                      isExpanded: isBYONImageExpanded(image),
-                      onToggle: () => setBYONImageExpanded(image, !isBYONImageExpanded(image)),
+                      isExpanded: isCREResourceExpanded(resource),
+                      onToggle: () =>
+                        setCREResourceExpanded(resource, !isCREResourceExpanded(resource)),
                     }}
                   />
-                  <Td dataLabel={columnNames.name}>{image.name}</Td>
-                  <Td dataLabel={columnNames.description}>{image.description}</Td>
-                  <Td dataLabel={columnNames.status}>{getPhase(image)}</Td>
+                  <Td dataLabel={columnNames.name}>{resource.name}</Td>
+                  <Td dataLabel={columnNames.description}>{resource.description}</Td>
+                  <Td dataLabel={columnNames.status}>{getPhase(resource)}</Td>
                   <Td>
                     <Switch
                       className="enable-switch"
-                      aria-label={`Enable Switch ${image.name}`}
-                      data-id={`enabled-disable-${image.id}`}
+                      aria-label={`Enable Switch ${resource.name}`}
+                      data-id={`enabled-disable-${resource.id}`}
                       isChecked={
-                        BYONImageVisible.find((value) => {
-                          return image.id === value.id;
+                        CREResourceVisible.find((value) => {
+                          return resource.id === value.id;
                         })?.visible
                       }
                       onChange={() => {
-                        updateBYONImage({
-                          id: image.id,
-                          visible: !image.visible,
-                          packages: image.packages,
+                        updateCREImageStream({
+                          id: resource.id,
+                          visible: !resource.visible,
                         });
-                        setBYONImageVisible(
-                          BYONImageVisible.map((value) =>
-                            image.id === value.id
+                        setCREResourceVisible(
+                          CREResourceVisible.map((value) =>
+                            resource.id === value.id
                               ? { id: value.id, visible: !value.visible }
                               : value,
                           ),
@@ -395,15 +410,18 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
                       }}
                     />
                   </Td>
-                  <Td dataLabel={columnNames.user}>{image.user}</Td>
+                  <Td dataLabel={columnNames.user}>{resource.user}</Td>
                   <Td dataLabel={columnNames.uploaded}>
-                    {relativeTime(currentTimeStamp, new Date(image.uploaded as Date).getTime())}
+                    {relativeTime(currentTimeStamp, new Date(resource.uploaded as Date).getTime())}
                   </Td>
                   <Td isActionCell>
-                    <ActionsColumn items={rowActions(image)} />
+                    <ActionsColumn items={rowActions(resource)} />
                   </Td>
                 </Tr>
-                <Tr isHidden={applyTableFilter(image)} isExpanded={isBYONImageExpanded(image)}>
+                <Tr
+                  isHidden={applyTableFilter(resource)}
+                  isExpanded={isCREResourceExpanded(resource)}
+                >
                   <Td dataLabel="Package Details" colSpan={Object.entries(columnNames).length}>
                     {packages.length > 0 ? (
                       <ExpandableRowContent>
@@ -418,7 +436,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
                         <Title headingLevel="h4" size="lg">
                           No packages detected
                         </Title>
-                        <EmptyStateBody>Edit the image to add packages</EmptyStateBody>
+                        <EmptyStateBody>Edit the resource to add packages</EmptyStateBody>
                       </EmptyState>
                     )}
                   </Td>
@@ -443,7 +461,7 @@ export const BYONImagesTable: React.FC<BYONImagesTableProps> = ({ images, forceU
                         setTableFilter({
                           filter: '',
                           option: tableFilter.option,
-                          count: images.length,
+                          count: resources.length,
                         });
                       }}
                     >

@@ -1,11 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   FormGroup,
   TextInput,
   Text,
-  Tabs,
-  Tab,
-  TabTitleText,
   Select,
   SelectVariant,
   SelectOption,
@@ -19,11 +16,11 @@ import {
   Alert,
   FormAlert,
 } from '@patternfly/react-core';
-import { BYONImagePackage, ImageInfo } from 'types';
+import { CREPackageAnnotation, ImageInfo } from 'types';
 import { ExclamationCircleIcon } from '@patternfly/react-icons';
 import './ImageForm.scss';
 import { useWatchImages } from 'utilities/useWatchImages';
-import { ComponentsTable } from './ComponentsTable';
+import PackageTable from './PackageTable';
 
 export type ExistingImageFormType = {
   state: {
@@ -38,8 +35,7 @@ export type ExistingImageFormType = {
     };
     name: string;
     description: string;
-    software: BYONImagePackage[];
-    packages: BYONImagePackage[];
+    packageVersions: string;
   };
   valid: {
     source: boolean;
@@ -52,36 +48,8 @@ type ExistingImageFormProps = {
 } & ExistingImageFormType;
 
 export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, valid, setValue }) => {
-  const [activeTabKey, setActiveTabKey] = React.useState<string | number>('software');
   const [sourceIsOpen, setSourceIsOpen] = React.useState<boolean>(false);
-
   const { images, loaded, loadError } = useWatchImages();
-
-  const [defaultPackages, setDefaultPackages] = React.useState<BYONImagePackage[]>([]);
-  const [defaultSoftware, setDefaultSoftware] = React.useState<BYONImagePackage[]>([]);
-
-  useEffect(() => {
-    if (state.source && state.source.tagIndex !== undefined) {
-      const content = state.source.image?.tags[state.source.tagIndex].content;
-
-      if (content?.dependencies) {
-        const packages = content?.dependencies.map((p) => ({
-          visible: true,
-          ...p,
-        }));
-        setDefaultPackages(packages);
-        setValue('packages', packages);
-      }
-      if (content?.software) {
-        const software = content?.software.map((p) => ({
-          visible: true,
-          ...p,
-        }));
-        setDefaultSoftware(software);
-        setValue('software', software);
-      }
-    }
-  }, [state.source, setValue]);
 
   const sourceOptions = useMemo(() => {
     const options: {
@@ -97,7 +65,7 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
       images.forEach((image, i) => {
         // TODO verify if this is correct way for grouping
         const group =
-          image?.labels?.['app.kubernetes.io/created-by'] === 'byon'
+          image?.labels?.['app.kubernetes.io/created-by'] === 'cpe-_a-meteor.zone-CNBi-v0.1.0'
             ? 'custom'
             : image?.labels?.['opendatahub.io/component'] === 'true'
             ? 'core'
@@ -230,19 +198,34 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
     }
   }, [sourceOptions, loadError, loaded]);
 
+  const packageAnnotations: CREPackageAnnotation[] = useMemo(() => {
+    if (state.source && state.source.tagIndex !== undefined) {
+      const content = state.source.image?.tags[state.source.tagIndex].content;
+
+      if (content?.dependencies) {
+        return content?.dependencies.map((p) => ({
+          name: p.name,
+          version: p.version,
+        }));
+      }
+    }
+
+    return [];
+  }, [state.source]);
+
   return (
     <React.Fragment>
       <FormGroup
         label="Source image"
         isRequired
-        fieldId="byon-image-source-label"
+        fieldId="cre-image-source-label"
         helperTextInvalid="This field is required."
         helperTextInvalidIcon={<ExclamationCircleIcon />}
       >
         <Select
-          id="byon-image-source-input"
-          data-id="byon-image-source-input"
-          name="byon-image-source-input"
+          id="cre-image-source-input"
+          data-id="cre-image-source-input"
+          name="cre-image-source-input"
           selections={state.source}
           variant={SelectVariant.single}
           isOpen={sourceIsOpen}
@@ -264,97 +247,61 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
       <FormGroup
         label="Name"
         isRequired
-        fieldId="byon-image-name-label"
+        fieldId="cre-image-name-label"
         helperTextInvalid="This field is required."
         helperTextInvalidIcon={<ExclamationCircleIcon />}
         validated={valid.name || state.name === '' ? undefined : 'error'}
       >
         <TextInput
-          id="byon-image-name-input"
+          id="cre-image-name-input"
           isRequired
           type="text"
-          data-id="byon-image-name-input"
-          name="byon-image-name-input"
+          data-id="cre-image-name-input"
+          name="cre-image-name-input"
           value={state.name}
           onChange={(value) => {
             setValue('name', value);
           }}
         />
       </FormGroup>
-      <FormGroup label="Description" fieldId="byon-image-description">
+      <FormGroup label="Description" fieldId="cre-image-description">
         <TextInput
-          id="byon-image-description-input"
+          id="cre-image-description-input"
           isRequired
           type="text"
-          data-id="byon-image-description-input"
-          name="byon-image-description-input"
-          aria-describedby="byon-image-description-input"
+          data-id="cre-image-description-input"
+          name="cre-image-description-input"
+          aria-describedby="cre-image-description-input"
           value={state.description}
           onChange={(value) => {
             setValue('description', value);
           }}
         />
       </FormGroup>
-      <FormGroup label="Included Components" fieldId="byon-image-software-packages">
+      <FormGroup label="Included Packages" fieldId="cre-image-software-packages">
         <Text component="p" className="gutter-bottom">
-          Select the {activeTabKey} and packages to be included in the new image.
+          Select the packages to be added to the base image.
         </Text>
         {state?.source?.tagIndex !== undefined &&
-          (!state?.source?.image?.tags?.[state.source.tagIndex].annotations?.[
-            'opendatahub.io/notebook-software'
-          ] ||
-            !state?.source?.image?.tags?.[state.source.tagIndex].annotations?.[
-              'opendatahub.io/notebook-python-dependencies'
-            ]) && (
+          !state?.source?.image?.tags?.[state.source.tagIndex].annotations?.[
+            'opendatahub.io/notebook-python-dependencies'
+          ] && (
             <FormAlert>
               <Alert
                 isInline
                 className="gutter-bottom"
                 variant="warning"
-                title="Annotations on the imagestream are not present: can not see the contents of the image."
+                title="Annotations describing included packages are not present."
               >
-                <p>Missing the following annotations:</p>
-                <ul>
-                  {!state?.source?.image?.tags?.[state.source.tagIndex].annotations?.[
-                    'opendatahub.io/notebook-software'
-                  ] && (
-                    <li>
-                      <code>opendatahub.io/notebook-python-dependencies</code>
-                    </li>
-                  )}
-                  {!state?.source?.image?.tags?.[state.source.tagIndex].annotations?.[
-                    'opendatahub.io/notebook-python-dependencies'
-                  ] && (
-                    <li>
-                      <code>opendatahub.io/notebook-software</code>
-                    </li>
-                  )}
-                </ul>
+                The ImageStream is missing the{' '}
+                <code>opendatahub.io/notebook-python-dependencies</code> annotation.
               </Alert>
             </FormAlert>
           )}
-        <Tabs
-          activeKey={activeTabKey}
-          onSelect={(_event, tabIndex) => setActiveTabKey(tabIndex)}
-          role="region"
-        >
-          <Tab eventKey="software" title={<TabTitleText>Software</TabTitleText>}>
-            <ComponentsTable
-              defaultRows={defaultSoftware}
-              selectedRows={state.software}
-              label="software"
-              setValue={setValue}
-            />
-          </Tab>
-          <Tab eventKey="package" title={<TabTitleText>Packages</TabTitleText>}>
-            <ComponentsTable
-              defaultRows={defaultPackages}
-              selectedRows={state.packages}
-              label="packages"
-              setValue={setValue}
-            />
-          </Tab>
-        </Tabs>
+        <PackageTable
+          packageAnnotations={packageAnnotations}
+          onChange={(value) => setValue('packageVersions', value)}
+        />
       </FormGroup>
     </React.Fragment>
   );

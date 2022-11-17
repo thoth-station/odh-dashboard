@@ -7,11 +7,10 @@ import {
   ImageStream,
   TagContent,
   KubeFastifyInstance,
-  BYONImageCreateRequest,
-  BYONImageUpdateRequest,
-  BYONImagePackage,
-  BYONImage,
-  BYONImageStatus,
+  CREImageStreamDetails,
+  CREPackageAnnotation,
+  CREImageStreamPhase,
+  CREImageStreamUpdateRequest,
 } from '../../../types';
 import { FastifyRequest } from 'fastify';
 import createError from 'http-errors';
@@ -19,16 +18,16 @@ import createError from 'http-errors';
 export const getImageList = async (
   fastify: KubeFastifyInstance,
   labels: { [key: string]: string },
-): Promise<BYONImage[] | ImageInfo[]> => {
+): Promise<CREImageStreamDetails[] | ImageInfo[]> => {
   const imageStreamList = await Promise.resolve(getImageStreams(fastify, labels));
-  // Return BYON structured response if BYON label is included
-  if (labels['app.kubernetes.io/created-by'] === 'byon') {
-    const BYONImageList: BYONImage[] = [
-      ...imageStreamList.map((is) => mapImageStreamToBYONImage(is)),
+  // Return CRE structured response if CRE label is included
+  if (labels['app.kubernetes.io/created-by'] === 'cpe-_a-meteor.zone-CNBi-v0.1.0') {
+    const CREImageList: CREImageStreamDetails[] = [
+      ...imageStreamList.map((is) => mapImageStreamToCREImage(is)),
     ];
-    return BYONImageList;
+    return CREImageList;
   }
-  // Return ImageInfo structure if request does not have BYON label
+  // Return ImageInfo structure if request does not have CRE label
   else {
     const imageInfoList = imageStreamList.map((imageStream) => {
       return processImageInfo(imageStream);
@@ -142,7 +141,6 @@ const getTagInfo = (imageStream: ImageStream): ImageTagInfo[] => {
       return; //Skip tag
     }
 
-    //TODO: add build status
     const tagInfo: ImageTagInfo = {
       content: getTagContent(tag),
       name: tag.name,
@@ -163,121 +161,31 @@ const getTagContent = (tag: ImageStreamTag): TagContent => {
   return content;
 };
 
-const packagesToString = (packages: BYONImagePackage[]): string => {
-  if (packages.length > 0) {
-    let packageAsString = '[';
-    packages.forEach((value, index) => {
-      packageAsString = packageAsString + JSON.stringify(value);
-      if (index !== packages.length - 1) {
-        packageAsString = packageAsString + `,`;
-      } else {
-        packageAsString = packageAsString + ']';
-      }
-    });
-    return packageAsString;
-  }
-  return '[]';
-};
-const mapImageStreamToBYONImage = (is: ImageStream): BYONImage => ({
+const mapImageStreamToCREImage = (is: ImageStream): CREImageStreamDetails => ({
   id: is.metadata.name,
+  hasImage: true,
   name: is.metadata.annotations['opendatahub.io/notebook-image-name'],
   description: is.metadata.annotations['opendatahub.io/notebook-image-desc'],
-  phase: is.metadata.annotations['opendatahub.io/notebook-image-phase'] as BYONImageStatus,
+  phase: is.metadata.annotations['opendatahub.io/notebook-image-phase'] as CREImageStreamPhase,
   visible: is.metadata.labels['opendatahub.io/notebook-image'] === 'true',
   error: is.metadata.annotations['opendatahub.io/notebook-image-messages']
     ? JSON.parse(is.metadata.annotations['opendatahub.io/notebook-image-messages'])
     : [],
-  packages:
+  packageAnnotations:
     is.spec.tags &&
     (JSON.parse(
       is.spec.tags[0].annotations['opendatahub.io/notebook-python-dependencies'],
-    ) as BYONImagePackage[]),
-  software:
+    ) as CREPackageAnnotation[]),
+  softwareAnnotations:
     is.spec.tags &&
     (JSON.parse(
       is.spec.tags[0].annotations['opendatahub.io/notebook-software'],
-    ) as BYONImagePackage[]),
+    ) as CREPackageAnnotation[]),
   uploaded: is.metadata.creationTimestamp,
   url: is.metadata.annotations['opendatahub.io/notebook-image-url'],
   user: is.metadata.annotations['opendatahub.io/notebook-image-creator'],
   labels: is.metadata.labels,
 });
-
-export const postImage = async (
-  fastify: KubeFastifyInstance,
-  request: FastifyRequest,
-): Promise<{ success: boolean; error: string }> => {
-  const customObjectsApi = fastify.kube.customObjectsApi;
-  const namespace = fastify.kube.namespace;
-  const body = request.body as BYONImageCreateRequest;
-  const imageTag = body.url.split(':')[1];
-  const labels = {
-    'app.kubernetes.io/created-by': 'byon',
-    'opendatahub.io/notebook-image': 'true',
-    'opendatahub.io/dashboard': 'true',
-  };
-  const imageStreams = (await getImageStreams(fastify, labels)) as ImageStream[];
-  const validName = imageStreams.filter((is) => is.metadata.name === body.name);
-
-  if (validName.length > 0) {
-    fastify.log.error('Duplicate name unable to add notebook image');
-    return { success: false, error: 'Unable to add notebook image: ' + body.name };
-  }
-
-  const payload: ImageStream = {
-    kind: 'ImageStream',
-    apiVersion: 'image.openshift.io/v1',
-    metadata: {
-      annotations: {
-        'opendatahub.io/notebook-image-desc': body.description ? body.description : '',
-        'opendatahub.io/notebook-image-name': body.name,
-        'opendatahub.io/notebook-image-url': body.url,
-        'opendatahub.io/notebook-image-creator': body.user,
-        'opendatahub.io/notebook-image-phase': 'Succeeded',
-        'opendatahub.io/notebook-image-origin': 'Admin',
-        'opendatahub.io/notebook-image-messages': '',
-      },
-      name: `byon-${Date.now()}`,
-      namespace: namespace,
-      labels: labels,
-    },
-    spec: {
-      lookupPolicy: {
-        local: true,
-      },
-      tags: [
-        {
-          annotations: {
-            'opendatahub.io/notebook-software': packagesToString(body.software),
-            'opendatahub.io/notebook-python-dependencies': packagesToString(body.packages),
-            'openshift.io/imported-from': body.url,
-          },
-          from: {
-            kind: 'DockerImage',
-            name: body.url,
-          },
-          name: imageTag,
-        },
-      ],
-    },
-  };
-
-  try {
-    await customObjectsApi.createNamespacedCustomObject(
-      'image.openshift.io',
-      'v1',
-      namespace,
-      'imagestreams',
-      payload,
-    );
-    return { success: true, error: null };
-  } catch (e) {
-    if (e.response?.statusCode !== 404) {
-      fastify.log.error('Unable to add notebook image: ' + e.toString());
-      return { success: false, error: 'Unable to add notebook image: ' + e.message };
-    }
-  }
-};
 
 export const deleteImage = async (
   fastify: KubeFastifyInstance,
@@ -315,9 +223,9 @@ export const updateImage = async (
   const customObjectsApi = fastify.kube.customObjectsApi;
   const namespace = fastify.kube.namespace;
   const params = request.params as { image: string };
-  const body = request.body as BYONImageUpdateRequest;
+  const body = request.body as CREImageStreamUpdateRequest;
   const labels = {
-    'app.kubernetes.io/created-by': 'byon',
+    'app.kubernetes.io/created-by': 'cre',
     'opendatahub.io/notebook-image': 'true',
   };
 
@@ -347,14 +255,14 @@ export const updateImage = async (
         throw createError(e.statusCode, e?.body?.message);
       });
 
-    if (body.packages && imageStream.spec.tags) {
+    if (body.packageAnnotations && imageStream.spec.tags) {
       imageStream.spec.tags[0].annotations['opendatahub.io/notebook-python-dependencies'] =
-        JSON.stringify(body.packages);
+        JSON.stringify(body.packageAnnotations);
     }
 
-    if (body.software && imageStream.spec.tags) {
+    if (body.softwareAnnotations && imageStream.spec.tags) {
       imageStream.spec.tags[0].annotations['opendatahub.io/notebook-software'] = JSON.stringify(
-        body.software,
+        body.softwareAnnotations,
       );
     }
 

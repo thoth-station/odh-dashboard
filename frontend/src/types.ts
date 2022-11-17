@@ -378,46 +378,112 @@ export type Route = {
   };
 };
 
-export type BYONImageError = {
-  severity: string;
-  message: string;
-};
-
-export type BYONImageStatus = 'Importing' | 'Validating' | 'Succeeded' | 'Failed';
-
-export type BYONImage = {
-  id: string;
-  phase?: BYONImageStatus;
-  user?: string;
-  uploaded?: Date;
-  error?: BYONImageError[];
-  labels?: { [key: string]: string };
-} & BYONImageCreateRequest &
-  BYONImageUpdateRequest;
-
-export type BYONImageCreateRequest = {
+export type CREPackage = {
   name: string;
-  url: string;
-  description?: string;
-  // FIXME: This shouldn't be a user defined value consumed from the request payload but should be a controlled value from an authentication middleware.
-  user: string;
-  software?: BYONImagePackage[];
-  packages?: BYONImagePackage[];
+  specifier?: '==' | '>=' | '<=' | '<' | '>' | '~=';
+  version?: string;
 };
 
-export type BYONImageUpdateRequest = {
+export type CREPackageAnnotation = {
+  name: string;
+  version: string;
+};
+
+export type CREImageImportSpec = {
+  buildType: 'ImageImport';
+  fromImage: string;
+  imagePullSecret?: {
+    name: string;
+  };
+};
+
+export type CREPackageListSpec = {
+  buildType: 'PackageList';
+  baseImage: string;
+  packageVersions?: string[];
+  runtimeEnvironment?: {
+    osName: string;
+    osVersion: string;
+    pythonVersion: string;
+  };
+};
+export type CREImageStreamPhase = 'Pending' | 'Failed' | 'Running' | 'Succeeded' | 'Unknown';
+
+//ImageStream extracted details created with CRE resource
+export type CREImageStreamDetails = {
+  hasImage: boolean;
+  name: string;
+  user: string;
+  description?: string;
+  visible?: boolean;
+  error?: {
+    severity: string;
+    message: string;
+  }[];
+  phase?: CREImageStreamPhase;
+  softwareAnnotations?: CREPackageAnnotation[];
+  packageAnnotations?: CREPackageAnnotation[];
+};
+
+// CRE resource extracted details
+export type CREResourceDetails = {
+  id: string;
+  uploaded: Date;
+  lastCondition?: {
+    lastTransitionTime?: string;
+    message?: string;
+    reason?: string;
+    status: string;
+    type: string;
+  };
+};
+
+export type CREDetails = CREImageStreamDetails & CREResourceDetails;
+
+export type CREResource = {
+  apiVersion?: string;
+  kind?: string;
+  metadata: {
+    name: string;
+    labels?: { [key: string]: string };
+    annotations?: { [key: string]: string };
+    creationTimestamp?: Date;
+  };
+  spec: CREImageImportSpec | CREPackageListSpec;
+  status?: {
+    conditions?: {
+      lastTransitionTime?: string;
+      message?: string;
+      reason?: string;
+      status: string;
+      type: string;
+    }[];
+  };
+};
+
+export type CREImageStreamUpdateRequest = {
   id: string;
   name?: string;
   description?: string;
   visible?: boolean;
-  software?: BYONImagePackage[];
-  packages?: BYONImagePackage[];
+  packageAnnotations?: CREPackageAnnotation[];
+  softwareAnnotations?: CREPackageAnnotation[];
 };
 
-export type BYONImagePackage = {
+export type CREResourceCreateRequest = {
+  buildType: 'ImageImport' | 'PackageList';
   name: string;
-  version: string;
-  visible: boolean;
+  description?: string;
+  user: string;
+  fromImage?: string;
+  imagePullSecretName?: string;
+  runtimeEnvironment?: {
+    osName: string;
+    osVersion: string;
+    pythonVersion: string;
+  };
+  baseImage?: string;
+  packageVersions?: string[];
 };
 
 export type ImageTag = {

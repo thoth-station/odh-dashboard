@@ -12,6 +12,12 @@ export const USER_ACCESS_TOKEN = 'x-forwarded-access-token';
 export const yamlRegExp = /\.ya?ml$/;
 export const mdRegExp = /\.md$/;
 
+export const CRE_ANNOTATIONS = {
+  DESC: 'opendatahub.io/notebook-image-desc',
+  NAME: 'opendatahub.io/notebook-image-name',
+  CREATOR: 'opendatahub.io/notebook-image-creator',
+};
+
 export const IMAGE_ANNOTATIONS = {
   DESC: 'opendatahub.io/notebook-image-desc',
   DISP_NAME: 'opendatahub.io/notebook-image-name',
