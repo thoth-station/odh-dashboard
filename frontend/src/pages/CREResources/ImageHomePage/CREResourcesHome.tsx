@@ -10,18 +10,18 @@ import {
   PageSectionVariants,
   Title,
 } from '@patternfly/react-core';
-import ApplicationsPage from '../ApplicationsPage';
-import { useWatchBYONImages } from '../../utilities/useWatchBYONImages';
+import ApplicationsPage from '../../ApplicationsPage';
+import { useWatchCREResources } from '../../../utilities/useWatchCREResources';
 import { PlusCircleIcon } from '@patternfly/react-icons';
-import { BYONImagesTable } from './BYONImagesTable';
+import { CREResourcesTable } from './CREResourcesTable';
 import { useNavigate } from 'react-router-dom';
 
 const description = `Import, delete, and modify notebook images.`;
 
-const BYONImagesHome: React.FC = () => {
+const CREResourcesHome: React.FC = () => {
   const navigate = useNavigate();
-  const { images, loaded, loadError, forceUpdate } = useWatchBYONImages();
-  const isEmpty = !images || images.length === 0;
+  const { resources, loaded, loadError, forceUpdate } = useWatchCREResources();
+  const isEmpty = !resources || resources.length === 0;
 
   const noImagesPageSection = (
     <PageSection isFilled>
@@ -35,7 +35,7 @@ const BYONImagesHome: React.FC = () => {
           data-id="display-image-modal-button"
           variant={ButtonVariant.primary}
           onClick={() => {
-            navigate('add-new-image');
+            navigate('add-new-resource');
           }}
         >
           Add new image
@@ -57,7 +57,7 @@ const BYONImagesHome: React.FC = () => {
       {!isEmpty ? (
         <div className="odh-cluster-settings">
           <PageSection variant={PageSectionVariants.light} padding={{ default: 'noPadding' }}>
-            <BYONImagesTable images={images} forceUpdate={forceUpdate} />
+            <CREResourcesTable resources={resources} forceUpdate={forceUpdate} />
           </PageSection>
         </div>
       ) : null}
@@ -65,4 +65,4 @@ const BYONImagesHome: React.FC = () => {
   );
 };
 
-export default BYONImagesHome;
+export default CREResourcesHome;

@@ -13,18 +13,17 @@ import {
   SelectOption,
   SelectVariant,
 } from '@patternfly/react-core';
-import { addNotification } from '../../redux/actions/actions';
+import { addNotification } from '../../../redux/actions/actions';
 import ApplicationsPage from 'pages/ApplicationsPage';
-import { importBYONImage } from 'services/imagesService';
+import { createCREResource } from 'services/creServices';
 import ImportImageForm, { ImportImageFormType } from './ImportImageForm';
 import { useNavigate } from 'react-router-dom';
 import { ResponseStatus } from 'types';
-import { useWatchBYONImages } from 'utilities/useWatchBYONImages';
+import { useWatchCREResources } from 'utilities/useWatchCREResources';
 import './AddNewImageForm.scss';
 import ExistingImageForm, { ExistingImageFormType } from './ExisitingImageForm';
 import BuildImageForm, { BuildImageFormType } from './BuildImageForm';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 
 export const AddNewImageForm: React.FC = () => {
   const userName = useAppSelector((state) => state.user || '');
@@ -38,7 +37,7 @@ export const AddNewImageForm: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const { forceUpdate } = useWatchBYONImages();
+  const { forceUpdate } = useWatchCREResources();
 
   // default state for "import image" form
   const defaultImportState: ImportImageFormType = {
@@ -57,11 +56,17 @@ export const AddNewImageForm: React.FC = () => {
     state: {
       name: '',
       description: '',
-      requirements: '',
+      packageVersions: '',
+      osName: '',
+      osVersion: '',
+      pythonVersion: '',
     },
     valid: {
-      requirements: false,
+      packageVersions: false,
       name: false,
+      osName: false,
+      osVersion: false,
+      pythonVersion: false,
     },
   };
 
@@ -71,8 +76,7 @@ export const AddNewImageForm: React.FC = () => {
       source: undefined,
       name: '',
       description: '',
-      software: [],
-      packages: [],
+      packageVersions: '',
     },
     valid: {
       source: false,
@@ -121,7 +125,7 @@ export const AddNewImageForm: React.FC = () => {
 
   const [formState, formDispatch] = useReducer(reducer, defaultFormState);
 
-  const imageSelectOptions = useMemo(
+  const imageSelectOptions: { key: 'import' | 'existing' | 'build'; value: string }[] = useMemo(
     () => [
       {
         key: 'import',
@@ -188,10 +192,31 @@ export const AddNewImageForm: React.FC = () => {
           valid = false;
         }
 
-        if (formState.state.requirements.length > 0) {
-          formDispatch({ type: 'validate', key: 'requirements', value: true });
+        if (formState.state.packageVersions.length > 0) {
+          formDispatch({ type: 'validate', key: 'packageVersions', value: true });
         } else {
-          formDispatch({ type: 'validate', key: 'requirements', value: false });
+          formDispatch({ type: 'validate', key: 'packageVersions', value: false });
+          valid = false;
+        }
+
+        if (formState.state.osName.length > 0) {
+          formDispatch({ type: 'validate', key: 'osName', value: true });
+        } else {
+          formDispatch({ type: 'validate', key: 'osName', value: false });
+          valid = false;
+        }
+
+        if (formState.state.osVersion.length > 0) {
+          formDispatch({ type: 'validate', key: 'osVersion', value: true });
+        } else {
+          formDispatch({ type: 'validate', key: 'osVersion', value: false });
+          valid = false;
+        }
+
+        if (formState.state.pythonVersion.length > 0) {
+          formDispatch({ type: 'validate', key: 'pythonVersion', value: true });
+        } else {
+          formDispatch({ type: 'validate', key: 'pythonVersion', value: false });
           valid = false;
         }
         break;
@@ -255,44 +280,39 @@ export const AddNewImageForm: React.FC = () => {
       (option) => option.value === imageSelectValue,
     )?.key;
 
-    // submit form based on which form is selected
-    switch (selectedOption) {
-      case 'import':
-        importBYONImage({
-          name: formState.state.name,
-          url: formState.state.repository,
-          description: formState.state.description,
-          user: userName,
-          software: formState.state.software,
-          packages: formState.state.packages,
+    if (selectedOption) {
+      createCREResource({
+        buildType: selectedOption === 'import' ? 'ImageImport' : 'PackageList',
+        name: formState.state.name,
+        description: formState.state?.description,
+        user: userName,
+        fromImage: formState.state?.repository,
+        baseImage: formState.state?.source?.image?.url,
+        packageVersions: formState.state?.packageVersions,
+        runtimeEnvironment: {
+          osName: formState.state.osName,
+          osVersion: formState.state.osVersion,
+          pythonVersion: formState.state.pythonVersion,
+        },
+      })
+        .then((value: ResponseStatus) => {
+          if (value.success === false) {
+            dispatch(
+              addNotification({
+                status: 'danger',
+                title: 'Error',
+                message: `Unable to add CRE resource ${formState.state.name}`,
+                timestamp: new Date(),
+              }),
+            );
+          }
+          forceUpdate();
+          closeHandler();
         })
-          .then((value: ResponseStatus) => {
-            if (value.success === false) {
-              dispatch(
-                addNotification({
-                  status: 'danger',
-                  title: 'Error',
-                  message: `Unable to add notebook image ${name}`,
-                  timestamp: new Date(),
-                }),
-              );
-            }
-            forceUpdate();
-            closeHandler();
-          })
-          .catch((error) => {
-            setIsLoading(false);
-            setError(error.toString());
-          });
-        break;
-      case 'existing':
-        // TODO create submitter
-        closeHandler();
-        break;
-      case 'build':
-        // TODO create submitter
-        closeHandler();
-        break;
+        .catch((error) => {
+          setIsLoading(false);
+          setError(error.toString());
+        });
     }
   };
 

@@ -4,36 +4,49 @@ import {
   FormGroup,
   Modal,
   ModalVariant,
+  Select,
+  SelectOption,
+  SelectVariant,
   Split,
   SplitItem,
   TextInput,
 } from '@patternfly/react-core';
 import { ExclamationCircleIcon } from '@patternfly/react-icons';
 import React from 'react';
+import { CREPackage } from 'types';
 
-type AddComponentModalType = {
+type AddPackageModalType = {
   existingNames: string[];
-  handleSave: (name: string, version: string, key: string) => void;
+  handleSave: (
+    name: string,
+    version: string,
+    specifier: CREPackage['specifier'],
+    key: string,
+  ) => void;
   handleDelete: () => void;
-  label: 'software' | 'packages';
   isOpen: boolean;
   handleToggle: () => void;
+  canDelete: boolean;
   defaultName?: string;
   defaultVersion?: string;
+  defaultSpecifier: CREPackage['specifier'];
 };
 
-export const AddComponentModal: React.FC<AddComponentModalType> = ({
+export const AddPackageModal: React.FC<AddPackageModalType> = ({
   existingNames,
   handleSave,
   handleDelete,
-  label,
   isOpen,
   handleToggle,
+  canDelete = true,
   defaultName = '',
   defaultVersion = '',
+  defaultSpecifier = '==',
 }) => {
-  const [name, setName] = React.useState('');
-  const [version, setVersion] = React.useState('');
+  const [name, setName] = React.useState(defaultName);
+  const [specifier, setSpecifier] = React.useState(defaultSpecifier);
+  const [version, setVersion] = React.useState(defaultVersion);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   // TODO validation can be supported by Thoth API in the future
   const validated =
@@ -46,11 +59,13 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
   React.useEffect(() => {
     setName(defaultName);
     setVersion(defaultVersion);
-  }, [isOpen, defaultName, defaultVersion]);
+    setSpecifier(defaultSpecifier);
+  }, [isOpen, defaultName, defaultVersion, defaultSpecifier]);
 
   const clearInputs = () => {
     setName('');
     setVersion('');
+    setSpecifier('==');
   };
 
   const editMode = defaultName !== '' && defaultVersion !== '';
@@ -58,7 +73,7 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={`${editMode ? 'Edit' : 'Add'} ${label === 'packages' ? 'Package' : 'Software'}`}
+      title={`${editMode ? 'Edit' : 'Add'} Package`}
       isOpen={isOpen}
       onClose={handleToggle}
       footer={
@@ -70,7 +85,7 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
               variant="primary"
               onClick={() => {
                 handleToggle();
-                handleSave(name, version, defaultName);
+                handleSave(name, version, specifier, defaultName);
                 clearInputs();
               }}
             >
@@ -89,18 +104,20 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
               Cancel
             </Button>
           </SplitItem>
-          <SplitItem>
-            {editMode ? (
-              <Button
-                style={{ textAlign: 'right' }}
-                key="delete"
-                variant="danger"
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-            ) : undefined}
-          </SplitItem>
+          {canDelete && (
+            <SplitItem>
+              {editMode ? (
+                <Button
+                  style={{ textAlign: 'right' }}
+                  key="delete"
+                  variant="danger"
+                  onClick={handleDelete}
+                >
+                  Delete
+                </Button>
+              ) : undefined}
+            </SplitItem>
+          )}
         </Split>
       }
     >
@@ -108,7 +125,7 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
         <FormGroup
           label="Name"
           isRequired
-          fieldId="byon-image-name-label"
+          fieldId="cre-image-name-label"
           helperTextInvalid="Name already exists in the table."
           helperTextInvalidIcon={<ExclamationCircleIcon />}
           validated={
@@ -118,30 +135,50 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
           }
         >
           <TextInput
-            id="byon-image-name-input"
+            isDisabled={!canDelete}
+            id="cre-image-name-input"
             isRequired
             type="text"
-            data-id="byon-image-name-input"
-            name="byon-image-name-input"
+            data-id="cre-image-name-input"
+            name="cre-image-name-input"
             value={name}
             onChange={(value) => {
               setName(value);
             }}
           />
         </FormGroup>
+        <FormGroup label="Specifier" isRequired fieldId="cre-image-specifier-label">
+          <Select
+            selections={specifier}
+            variant={SelectVariant.single}
+            isOpen={dropdownOpen}
+            onToggle={() => setDropdownOpen(!dropdownOpen)}
+            onSelect={(e, newValue) => {
+              const sp = newValue?.toString() as CREPackage['specifier'];
+              if (sp) {
+                setSpecifier(sp);
+                setDropdownOpen(false);
+              }
+            }}
+          >
+            {['==', '>=', '<=', '<', '>', '~='].map((option) => (
+              <SelectOption key={option} value={option} />
+            ))}
+          </Select>
+        </FormGroup>
         <FormGroup
           label="Version"
           isRequired
-          fieldId="byon-image-version-label"
+          fieldId="cre-image-version-label"
           helperTextInvalid="This field is required."
           helperTextInvalidIcon={<ExclamationCircleIcon />}
         >
           <TextInput
-            id="byon-image-version-input"
+            id="cre-image-version-input"
             isRequired
             type="text"
-            data-id="byon-image-version-input"
-            name="byon-image-version-input"
+            data-id="cre-image-version-input"
+            name="cre-image-version-input"
             value={version}
             onChange={(value) => {
               setVersion(value);

@@ -425,52 +425,11 @@ export type ODHSegmentKey = {
   segmentKey: string;
 };
 
-export type BYONImageError = {
-  severity: string;
-  message: string;
-};
-
-export type BYONImageStatus = 'Importing' | 'Validating' | 'Succeeded' | 'Failed';
-
-export type BYONImage = {
-  id: string;
-  phase?: BYONImageStatus;
-  user?: string;
-  uploaded?: Date;
-  error?: BYONImageError[];
-  labels?: { [key: string]: string };
-} & BYONImageCreateRequest &
-  BYONImageUpdateRequest;
-
-export type BYONImageCreateRequest = {
-  name: string;
-  url: string;
-  description?: string;
-  // FIXME: This shouldn't be a user defined value consumed from the request payload but should be a controlled value from an authentication middleware.
-  user: string;
-  software?: BYONImagePackage[];
-  packages?: BYONImagePackage[];
-};
-
 export type ImageTag = {
   image: ImageInfo | undefined;
   tag: ImageTagInfo | undefined;
 };
 
-export type BYONImageUpdateRequest = {
-  id: string;
-  name?: string;
-  description?: string;
-  visible?: boolean;
-  software?: BYONImagePackage[];
-  packages?: BYONImagePackage[];
-};
-
-export type BYONImagePackage = {
-  name: string;
-  version: string;
-  visible: boolean;
-};
 
 export type ImageStreamTag = {
   name: string;
@@ -518,6 +477,120 @@ export type ImageStream = {
   status?: ImageStreamStatus;
 } & K8sResourceCommon;
 
+
+export type CREPackage = {
+  name: string;
+  specifier?: "==" | ">=" | "<=" | "<" | ">" | "~="
+  version?: string;
+};
+
+export type CREPackageAnnotation = {
+  name: string;
+  version: string;
+};
+
+export type CREImageImportSpec = {
+  buildType: "ImageImport";
+  fromImage: string;
+  imagePullSecret?: {
+        name: string;
+  }
+}
+
+export type CREPackageListSpec = {
+  buildType: "PackageList";
+  baseImage: string;
+  packageVersions?: string[];
+  runtimeEnvironment?: {
+    osName: string
+    osVersion: string
+    pythonVersion: string
+  }
+}
+export type CREImageStreamPhase = "Pending" | "Failed" | "Running" | "Succeeded" | "Unknown"
+
+//ImageStream extracted details created with CRE resource
+export type CREImageStreamDetails = {
+  hasImage: boolean;
+  id: string,
+  name: string;
+  user: string,
+  description?: string;
+  visible?: boolean
+  error?: {
+    severity: string;
+    message: string;
+  }[]
+  phase?: CREImageStreamPhase
+  softwareAnnotations?: CREPackageAnnotation[]
+  packageAnnotations?: CREPackageAnnotation[]
+  uploaded?: Date
+  url?: string
+  labels?: {[key: string]: string;}
+}
+
+// CRE resource extracted details
+export type CREResourceDetails = {
+  id: string
+  uploaded: Date;
+  lastCondition?: {
+    lastTransitionTime?: string
+    message?: string
+    reason?: string
+    status: string
+    type: string
+  }
+}
+
+export type CREDetails = CREImageStreamDetails & CREResourceDetails
+
+export type CREResource = {
+  apiVersion?: string;
+  kind?: string;
+  metadata: {
+    name: string;
+    labels?: { [key: string]: string };
+    annotations?: { [key: string]: string };
+    creationTimestamp?: Date;
+  };
+  spec: CREImageImportSpec | CREPackageListSpec;
+  status?: {
+    conditions?: {
+      lastTransitionTime?: string
+      message?: string
+      reason?: string
+      status: string
+      type: string
+    }[]
+  }
+}
+
+export type CREImageStreamUpdateRequest = {
+    id: string;
+    name?: string;
+    description?: string;
+    visible?: boolean;
+    packageAnnotations?: CREPackageAnnotation[];
+    softwareAnnotations?: CREPackageAnnotation[];
+}
+
+export type CREResourceCreateRequest = {
+  buildType: "ImageImport" | "PackageList"
+  name: string;
+  description?: string;
+  user: string;
+  fromImage?: string;
+  imagePullSecretName?: string
+  runtimeEnvironment?: {
+    osName: string
+    osVersion: string
+    pythonVersion: string
+  },
+  baseImage?: string,
+  packageVersions?: string[];
+};
+
+
 export type ImageStreamList = {
   apiVersion?: string;
   kind?: string;
@@ -556,7 +629,7 @@ export type ImageInfo = {
 
 };
 
-export type ImageType = 'byon' | 'jupyter' | 'other';
+export type ImageType = 'cre' | 'jupyter' | 'other';
 
 export type PersistentVolumeClaimKind = {
   apiVersion?: string;

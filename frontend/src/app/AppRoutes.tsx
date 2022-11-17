@@ -21,7 +21,7 @@ const NotebookController = React.lazy(
 const ClusterSettingsPage = React.lazy(() => import('../pages/clusterSettings/ClusterSettings'));
 const GroupSettingsPage = React.lazy(() => import('../pages/groupSettings/GroupSettings'));
 const LearningCenterPage = React.lazy(() => import('../pages/learningCenter/LearningCenter'));
-const BYONImagesPage = React.lazy(() => import('../pages/BYONImages/BYONImages'));
+const CREResourcesPage = React.lazy(() => import('../pages/CREResources/CREResources'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
 
 const AppRoutes: React.FC = () => {
@@ -49,7 +49,7 @@ const AppRoutes: React.FC = () => {
           path="/notebook/:namespace/:notebookName/logout"
           element={<NotebookLogoutRedirectPage />}
         />
-        {isAdmin && <Route path="/notebookImages/*" element={<BYONImagesPage />} />}
+        {isAdmin && <Route path="/notebookImages/*" element={<CREResourcesPage />} />}
         {isAdmin && <Route path="/clusterSettings" element={<ClusterSettingsPage />} />}
         {isAdmin && <Route path="/groupSettings" element={<GroupSettingsPage />} />}
         <Route path="*" element={<NotFound />} />
