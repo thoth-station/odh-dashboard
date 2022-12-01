@@ -29,7 +29,7 @@ import { AddPackageModal } from './AddPackageModal';
 */
 export const PackageTable: React.FC<{
   packageAnnotations?: CREPackageAnnotation[];
-  onChange: (value: string) => void;
+  onChange: (value: string[]) => void;
 }> = ({ packageAnnotations, onChange }) => {
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
@@ -50,12 +50,7 @@ export const PackageTable: React.FC<{
   }, [packageAnnotations]);
 
   React.useEffect(
-    () =>
-      onChange(
-        addedRows.reduce((prev, cur) => {
-          return prev + '\n' + `${cur.name}==${cur.version}`;
-        }, ''),
-      ),
+    () => onChange(addedRows.map((pkg) => `${pkg.name}==${pkg.version}`)),
     [addedRows, onChange],
   );
 
@@ -188,8 +183,7 @@ export const PackageTable: React.FC<{
                       {defaultRows.some((r) => r.name === row.name) && (
                         <Tooltip
                           removeFindDomNode
-                          content="This package was autofilled from ImageStream annotations. 
-                        The package cannot be removed, however the version can be updated."
+                          content="This package is already present in the base image. It cannot be removed, however the version can be updated."
                         >
                           <TagIcon
                             className={

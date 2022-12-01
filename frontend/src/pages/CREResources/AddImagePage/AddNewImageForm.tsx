@@ -56,7 +56,7 @@ export const AddNewImageForm: React.FC = () => {
     state: {
       name: '',
       description: '',
-      packageVersions: '',
+      packageVersions: [],
       osName: '',
       osVersion: '',
       pythonVersion: '',
@@ -76,7 +76,7 @@ export const AddNewImageForm: React.FC = () => {
       source: undefined,
       name: '',
       description: '',
-      packageVersions: '',
+      packageVersions: [],
     },
     valid: {
       source: false,

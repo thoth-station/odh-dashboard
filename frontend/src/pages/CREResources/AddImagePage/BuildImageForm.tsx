@@ -7,7 +7,7 @@ export type BuildImageFormType = {
   state: {
     name: string;
     description: string;
-    packageVersions: string;
+    packageVersions: string[];
     osName: string;
     osVersion: string;
     pythonVersion: string;
@@ -113,18 +113,18 @@ export const BuildImageForm: React.FC<BuildImageFormProps> = ({ state, valid, se
         <FileUpload
           id="text-file-requirements"
           type="text"
+          value={state.packageVersions.join('\n')}
           isLoading={isLoading}
-          value={state.packageVersions}
           filename={filename}
           filenamePlaceholder="Drag and drop a file or upload one"
           onFileInputChange={(_event, file) => setFilename(file.name)}
-          onDataChange={(value) => setValue('packageVersions', value)}
-          onTextChange={(value) => setValue('packageVersions', value)}
+          onDataChange={(value) => setValue('packageVersions', value.split(/\r?\n/))}
+          onTextChange={(value) => setValue('packageVersions', value.split(/\r?\n/))}
           onReadStarted={() => setIsLoading(true)}
           onReadFinished={() => setIsLoading(false)}
           onClearClick={() => {
             setFilename('');
-            setValue('packageVersions', '');
+            setValue('packageVersions', []);
           }}
           allowEditingUploadedText={true}
           browseButtonText="Upload"

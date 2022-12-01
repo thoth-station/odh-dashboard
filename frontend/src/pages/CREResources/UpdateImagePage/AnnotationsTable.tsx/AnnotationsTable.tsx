@@ -56,8 +56,9 @@ export const AnnotationsTable: React.FC<{
       const rows = [...selectedRows];
       rows.push(row);
       setSelectedRows(rows);
+    } else {
+      setSelectedRows((prev) => prev.filter((r) => r.name !== row.name));
     }
-    setSelectedRows((prev) => prev.filter((r) => r.name !== row.name));
   };
 
   const onSetPage = (
