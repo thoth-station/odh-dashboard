@@ -511,7 +511,6 @@ export type CREImageStreamPhase = "Pending" | "Failed" | "Running" | "Succeeded"
 
 //ImageStream extracted details created with CRE resource
 export type CREImageStreamDetails = {
-  hasImage: boolean;
   id: string,
   name: string;
   user: string,
@@ -527,6 +526,7 @@ export type CREImageStreamDetails = {
   uploaded?: Date
   url?: string
   labels?: {[key: string]: string;}
+  tags?: ImageTagInfo[];
 }
 
 // CRE resource extracted details
@@ -542,7 +542,7 @@ export type CREResourceDetails = {
   }
 }
 
-export type CREDetails = CREImageStreamDetails & CREResourceDetails
+export type CREDetails = CREImageStreamDetails & CREResourceDetails & { hasImage: boolean; resourceId: string }
 
 export type CREResource = {
   apiVersion?: string;
@@ -555,6 +555,7 @@ export type CREResource = {
   };
   spec: CREImageImportSpec | CREPackageListSpec;
   status?: {
+    phase?: CREImageStreamPhase
     conditions?: {
       lastTransitionTime?: string
       message?: string

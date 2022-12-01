@@ -17,6 +17,8 @@ export const DeleteCREResourceModal: React.FC<DeleteCREResourceModalProps> = ({
   onDeleteHandler,
   onCloseHandler,
 }) => {
+  const [loading, setLoading] = React.useState(false);
+
   return (
     <Modal
       variant={ModalVariant.medium}
@@ -28,9 +30,11 @@ export const DeleteCREResourceModal: React.FC<DeleteCREResourceModalProps> = ({
         <Button
           key="confirm"
           variant="danger"
+          isLoading={loading}
           onClick={() => {
+            setLoading(true);
             if (resource) {
-              deleteCREResource(resource.id).then(() => {
+              deleteCREResource(resource.resourceId).then(() => {
                 if (resource.hasImage) {
                   deleteCREImage(resource).then(() => {
                     onDeleteHandler();
@@ -42,6 +46,7 @@ export const DeleteCREResourceModal: React.FC<DeleteCREResourceModalProps> = ({
                 }
               });
             }
+            setLoading(false);
           }}
         >
           Delete

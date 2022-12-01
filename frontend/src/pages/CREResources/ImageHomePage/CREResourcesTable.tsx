@@ -43,7 +43,7 @@ import { CREDetails } from 'types';
 import { relativeTime } from '../../../utilities/time';
 import './CREResourcesTable.scss';
 import { DeleteCREResourceModal } from './DeleteCREResourceModal';
-import { updateCREImageStream } from '../../../services/creServices';
+import { updateCREImage } from '../../../services/imagesService';
 import { useNavigate } from 'react-router-dom';
 
 export type CREResourcesTableProps = {
@@ -72,7 +72,9 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
       id: `${resource.name}-edit-button`,
       disabled: !resource.hasImage,
       onClick: () => {
-        navigate('edit-resource', { state: { resource: resource } });
+        if (resource.hasImage) {
+          navigate('edit-resource', { state: { resource: resource } });
+        }
       },
     },
     {
@@ -89,7 +91,13 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
   ];
 
   const getPhase = (nb: CREDetails) => {
-    if (nb.phase === 'Succeeded')
+    if (!nb.phase) {
+      return (
+        <>
+          <UnknownIcon />
+        </>
+      );
+    } else if (nb.phase === 'Succeeded')
       return (
         <>
           <CheckIcon className="phase-success" /> {nb.phase}
@@ -99,7 +107,7 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
       return (
         <Popover
           aria-label="Alert popover"
-          alertSeverityVariant={'warning'}
+          alertSeverityVariant={'danger'}
           headerContent="Failed to load resource"
           headerIcon={<ExclamationTriangleIcon />}
           removeFindDomNode
@@ -123,16 +131,10 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
           </div>
         </Popover>
       );
-    else if (nb.phase === 'Running')
-      return (
-        <>
-          <Spinner size="md" /> {nb.phase}
-        </>
-      );
     else {
       return (
         <>
-          <UnknownIcon />
+          <Spinner size="md" /> {nb.phase}
         </>
       );
     }
@@ -387,6 +389,7 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
                   <Td dataLabel={columnNames.status}>{getPhase(resource)}</Td>
                   <Td>
                     <Switch
+                      isDisabled={!resource.hasImage}
                       className="enable-switch"
                       aria-label={`Enable Switch ${resource.name}`}
                       data-id={`enabled-disable-${resource.id}`}
@@ -396,7 +399,7 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
                         })?.visible
                       }
                       onChange={() => {
-                        updateCREImageStream({
+                        updateCREImage({
                           id: resource.id,
                           visible: !resource.visible,
                         });

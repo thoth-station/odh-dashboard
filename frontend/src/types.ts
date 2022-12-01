@@ -407,7 +407,7 @@ export type CREImageStreamPhase = 'Pending' | 'Failed' | 'Running' | 'Succeeded'
 
 //ImageStream extracted details created with CRE resource
 export type CREImageStreamDetails = {
-  hasImage: boolean;
+  id: string;
   name: string;
   user: string;
   description?: string;
@@ -419,6 +419,9 @@ export type CREImageStreamDetails = {
   phase?: CREImageStreamPhase;
   softwareAnnotations?: CREPackageAnnotation[];
   packageAnnotations?: CREPackageAnnotation[];
+  uploaded?: Date;
+  url?: string;
+  labels?: { [key: string]: string };
 };
 
 // CRE resource extracted details
@@ -434,7 +437,8 @@ export type CREResourceDetails = {
   };
 };
 
-export type CREDetails = CREImageStreamDetails & CREResourceDetails;
+export type CREDetails = CREImageStreamDetails &
+  CREResourceDetails & { hasImage: boolean; resourceId: string };
 
 export type CREResource = {
   apiVersion?: string;
@@ -447,6 +451,7 @@ export type CREResource = {
   };
   spec: CREImageImportSpec | CREPackageListSpec;
   status?: {
+    phase?: CREImageStreamPhase;
     conditions?: {
       lastTransitionTime?: string;
       message?: string;
@@ -602,7 +607,7 @@ export type ImageInfo = {
   labels?: { [key: string]: string };
 };
 
-export type ImageType = 'byon' | 'jupyter' | 'other';
+export type ImageType = 'cre' | 'jupyter' | 'other';
 
 export type PersistentVolumeClaim = K8sResourceCommon & {
   spec: {
