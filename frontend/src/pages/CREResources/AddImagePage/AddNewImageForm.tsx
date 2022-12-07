@@ -287,7 +287,11 @@ export const AddNewImageForm: React.FC = () => {
         description: formState.state?.description,
         user: userName,
         fromImage: formState.state?.repository,
-        baseImage: formState.state?.source?.image?.url,
+        baseImage: formState.state.source
+          ? `${formState.state?.source?.image?.dockerImageRepo}:${
+              formState.state?.source?.image?.tags[formState.state?.source.tagIndex].name
+            }`
+          : undefined,
         packageVersions: formState.state?.packageVersions,
         runtimeEnvironment: {
           osName: formState.state.osName,

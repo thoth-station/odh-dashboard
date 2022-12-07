@@ -6,6 +6,9 @@ import {
   EmptyStateBody,
   EmptyStateIcon,
   EmptyStateVariant,
+  ExpandableSectionToggle,
+  Flex,
+  FlexItem,
   Pagination,
   PaginationVariant,
   SearchInput,
@@ -17,7 +20,7 @@ import {
 } from '@patternfly/react-core';
 import { CREPackage, CREPackageAnnotation } from 'types';
 import './PackageTable.scss';
-import { CubesIcon, PencilAltIcon, TagIcon } from '@patternfly/react-icons';
+import { CubesIcon, OutlinedQuestionCircleIcon, PencilAltIcon } from '@patternfly/react-icons';
 import { AddPackageModal } from './AddPackageModal';
 
 /*
@@ -36,23 +39,9 @@ export const PackageTable: React.FC<{
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [activeRow, setActiveRow] = React.useState<CREPackage | undefined>();
   const [searchValue, setSearchValue] = React.useState('');
+  const [expanded, setExpanded] = React.useState(false);
 
-  const [defaultRows, setDefaultRows] = React.useState<CREPackage[]>([]);
   const [addedRows, setAddedRows] = React.useState<CREPackage[]>([]);
-  const [allRows, setAllRows] = React.useState<CREPackage[]>([]);
-
-  React.useEffect(() => {
-    setAddedRows([]);
-    if (packageAnnotations) {
-      setDefaultRows(packageAnnotations);
-      setAllRows(packageAnnotations);
-    }
-  }, [packageAnnotations]);
-
-  React.useEffect(
-    () => onChange(addedRows.map((pkg) => `${pkg.name}==${pkg.version}`)),
-    [addedRows, onChange],
-  );
 
   const onSetPage = (
     _event: React.MouseEvent | React.KeyboardEvent | MouseEvent,
@@ -83,19 +72,17 @@ export const PackageTable: React.FC<{
   return (
     <div className="pf-u-box-shadow-sm">
       <AddPackageModal
-        existingNames={allRows.map((r) => r.name.toLowerCase())}
+        existingNames={addedRows.map((r) => r.name.toLowerCase())}
         defaultName={activeRow?.name}
         defaultVersion={activeRow?.version}
         defaultSpecifier={activeRow?.specifier}
         isOpen={isModalOpen}
-        canDelete={!defaultRows.some((r) => r.name === activeRow?.name)}
         handleDelete={() => {
           const editedRows = addedRows.filter((value) => value.name !== activeRow?.name);
           setAddedRows(editedRows);
-          setAllRows([
-            ...editedRows,
-            ...defaultRows.filter((row) => !editedRows.some((r) => r.name === row.name)),
-          ]);
+          onChange(
+            editedRows.map((pkg) => `${pkg.name}${pkg.specifier ?? ''}${pkg.version ?? ''}`),
+          );
           handleModalToggle();
         }}
         handleToggle={handleModalToggle}
@@ -105,16 +92,15 @@ export const PackageTable: React.FC<{
             version: version,
             specifier: specifier,
           };
-          const editedRows = addedRows.filter((value) => value.name !== newRow.name);
+          const editedRows = addedRows.filter((value) => value.name !== activeRow?.name);
           editedRows.push(newRow);
           setAddedRows(editedRows);
-          setAllRows([
-            ...editedRows,
-            ...defaultRows.filter((row) => !editedRows.some((r) => r.name === row.name)),
-          ]);
+          onChange(
+            editedRows.map((pkg) => `${pkg.name}${pkg.specifier ?? ''}${pkg.version ?? ''}`),
+          );
         }}
       />
-      {allRows.length === 0 ? (
+      {addedRows.length === 0 && packageAnnotations?.length === 0 ? (
         <EmptyState variant={EmptyStateVariant.small}>
           <EmptyStateIcon icon={CubesIcon} />
           <Title headingLevel="h4" size="lg">
@@ -162,10 +148,9 @@ export const PackageTable: React.FC<{
               </ToolbarItem>
             </ToolbarContent>
           </Toolbar>
-          <TableComposable aria-label="Selectable table">
+          <TableComposable variant="compact" aria-label="Selectable table">
             <Thead>
               <Tr>
-                <Th />
                 <Th>{columnNames.name}</Th>
                 <Th>{columnNames.specifier}</Th>
                 <Th>{columnNames.version}</Th>
@@ -173,26 +158,49 @@ export const PackageTable: React.FC<{
               </Tr>
             </Thead>
             <Tbody>
-              {allRows
+              <Tr isHoverable onRowClick={() => setExpanded(!expanded)}>
+                <Td colSpan={4}>
+                  <Flex>
+                    <FlexItem spacer={{ default: 'spacerNone' }}>
+                      <ExpandableSectionToggle
+                        onToggle={() => null}
+                        isExpanded={expanded}
+                        direction="up"
+                      >
+                        {expanded ? 'Hide included packages' : 'Show included packages'}
+                      </ExpandableSectionToggle>
+                    </FlexItem>
+                    <FlexItem>
+                      <Tooltip
+                        removeFindDomNode
+                        content="Packages included in the base image cannot be removed."
+                      >
+                        <OutlinedQuestionCircleIcon />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
+                </Td>
+              </Tr>
+              {packageAnnotations?.map((row) => (
+                <Tr
+                  key={row.name + row.version}
+                  isHidden={!expanded}
+                  style={{
+                    borderLeft: '3px solid var(--pf-global--primary-color--100)',
+                  }}
+                >
+                  <Td dataLabel={columnNames.name}>{row.name}</Td>
+                  <Td />
+                  <Td dataLabel={columnNames.version}>{row.version}</Td>
+                  <Td />
+                </Tr>
+              ))}
+              {addedRows
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .filter((row) => row.name.toLowerCase().includes(searchValue))
                 .slice((page - 1) * perPage, (page - 1) * perPage + perPage)
                 .map((row) => (
                   <Tr key={row.name}>
-                    <Td>
-                      {defaultRows.some((r) => r.name === row.name) && (
-                        <Tooltip
-                          removeFindDomNode
-                          content="This package is already present in the base image. It cannot be removed, however the version can be updated."
-                        >
-                          <TagIcon
-                            className={
-                              addedRows.some((r) => r.name === row.name) ? 'annotation-edit' : ''
-                            }
-                          />
-                        </Tooltip>
-                      )}
-                    </Td>
                     <Td dataLabel={columnNames.name}>{row.name}</Td>
                     <Td dataLabel={columnNames.specifier}>{row.specifier}</Td>
                     <Td dataLabel={columnNames.version}>{row.version}</Td>
@@ -217,7 +225,7 @@ export const PackageTable: React.FC<{
               <ToolbarItem variant="pagination">
                 <Pagination
                   perPageComponent="button"
-                  itemCount={allRows.length}
+                  itemCount={addedRows.length}
                   perPage={perPage}
                   page={page}
                   onSetPage={onSetPage}

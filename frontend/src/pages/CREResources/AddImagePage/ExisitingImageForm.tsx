@@ -51,6 +51,8 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
   const [sourceIsOpen, setSourceIsOpen] = React.useState<boolean>(false);
   const { images, loaded, loadError } = useWatchImages();
 
+  console.log(state);
+
   const sourceOptions = useMemo(() => {
     const options: {
       value: string;
@@ -77,7 +79,7 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
             {
               toString: () => image.display_name ?? image.name,
               compareTo: (selectOption) => selectOption.key === i,
-              value: image.display_name ?? image.name,
+              value: image.display_name ?? image.name ?? 'n/a',
               key: i,
               isDisabled: true,
               group: group,
@@ -89,7 +91,7 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
             return {
               toString: () => image.display_name ?? image.name,
               compareTo: (selectOption) => selectOption.key === i,
-              value: image.display_name ?? image.name,
+              value: image.display_name ?? image.name ?? 'n/a',
               key: i,
               tagIndex: j,
               description: tag.name,
@@ -160,7 +162,7 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
         } else {
           return (
             <SelectOption
-              key={option.key + option.value}
+              key={option.key + option.value + option.tagIndex}
               value={option}
               description={option.description}
               isDisabled={option.isDisabled}
