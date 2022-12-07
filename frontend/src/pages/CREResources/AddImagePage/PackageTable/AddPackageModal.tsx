@@ -17,16 +17,10 @@ import { CREPackage } from 'types';
 
 type AddPackageModalType = {
   existingNames: string[];
-  handleSave: (
-    name: string,
-    version: string,
-    specifier: CREPackage['specifier'],
-    key: string,
-  ) => void;
+  handleSave: (name: string, version?: string, specifier?: CREPackage['specifier']) => void;
   handleDelete: () => void;
   isOpen: boolean;
   handleToggle: () => void;
-  canDelete: boolean;
   defaultName?: string;
   defaultVersion?: string;
   defaultSpecifier: CREPackage['specifier'];
@@ -38,13 +32,12 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
   handleDelete,
   isOpen,
   handleToggle,
-  canDelete = true,
-  defaultName = '',
-  defaultVersion = '',
-  defaultSpecifier = '==',
+  defaultName,
+  defaultVersion,
+  defaultSpecifier,
 }) => {
   const [name, setName] = React.useState(defaultName);
-  const [specifier, setSpecifier] = React.useState(defaultSpecifier);
+  const [specifier, setSpecifier] = React.useState<CREPackage['specifier']>(defaultSpecifier);
   const [version, setVersion] = React.useState(defaultVersion);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
@@ -53,8 +46,7 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
     name &&
     name !== '' &&
     (!existingNames.includes(name.toLowerCase()) || defaultName === name) &&
-    version &&
-    version !== '';
+    !((!version && specifier) || (version && !specifier));
 
   React.useEffect(() => {
     setName(defaultName);
@@ -63,9 +55,9 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
   }, [isOpen, defaultName, defaultVersion, defaultSpecifier]);
 
   const clearInputs = () => {
-    setName('');
-    setVersion('');
-    setSpecifier('==');
+    setName(undefined);
+    setVersion(undefined);
+    setSpecifier(undefined);
   };
 
   const editMode = defaultName !== '' && defaultVersion !== '';
@@ -84,9 +76,11 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
               key="confirm"
               variant="primary"
               onClick={() => {
-                handleToggle();
-                handleSave(name, version, specifier, defaultName);
-                clearInputs();
+                if (name) {
+                  handleToggle();
+                  handleSave(name, version, specifier);
+                  clearInputs();
+                }
               }}
             >
               {editMode ? 'Save' : 'Add'}
@@ -104,20 +98,18 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
               Cancel
             </Button>
           </SplitItem>
-          {canDelete && (
-            <SplitItem>
-              {editMode ? (
-                <Button
-                  style={{ textAlign: 'right' }}
-                  key="delete"
-                  variant="danger"
-                  onClick={handleDelete}
-                >
-                  Delete
-                </Button>
-              ) : undefined}
-            </SplitItem>
-          )}
+          <SplitItem>
+            {editMode ? (
+              <Button
+                style={{ textAlign: 'right' }}
+                key="delete"
+                variant="danger"
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+            ) : undefined}
+          </SplitItem>
         </Split>
       }
     >
@@ -129,19 +121,18 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
           helperTextInvalid="Name already exists in the table."
           helperTextInvalidIcon={<ExclamationCircleIcon />}
           validated={
-            !existingNames.includes(name.toLowerCase()) || defaultName === name
+            (name && !existingNames.includes(name.toLowerCase())) || defaultName === name
               ? undefined
               : 'error'
           }
         >
           <TextInput
-            isDisabled={!canDelete}
             id="cre-image-name-input"
             isRequired
             type="text"
             data-id="cre-image-name-input"
             name="cre-image-name-input"
-            value={name}
+            value={name ?? ''}
             onChange={(value) => {
               setName(value);
             }}
@@ -155,15 +146,16 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
             onToggle={() => setDropdownOpen(!dropdownOpen)}
             onSelect={(e, newValue) => {
               const sp = newValue?.toString() as CREPackage['specifier'];
-              if (sp) {
-                setSpecifier(sp);
-                setDropdownOpen(false);
-              }
+              setSpecifier(sp);
+              setDropdownOpen(false);
             }}
           >
-            {['==', '>=', '<=', '<', '>', '~='].map((option) => (
-              <SelectOption key={option} value={option} />
-            ))}
+            {[
+              <SelectOption key={0} value="" isPlaceholder />,
+              ...['==', '>=', '<=', '<', '>', '~='].map((option) => (
+                <SelectOption key={option} value={option} />
+              )),
+            ]}
           </Select>
         </FormGroup>
         <FormGroup
@@ -179,7 +171,7 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
             type="text"
             data-id="cre-image-version-input"
             name="cre-image-version-input"
-            value={version}
+            value={version ?? ''}
             onChange={(value) => {
               setVersion(value);
             }}

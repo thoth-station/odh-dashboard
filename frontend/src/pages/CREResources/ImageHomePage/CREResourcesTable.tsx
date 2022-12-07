@@ -112,19 +112,7 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
           headerIcon={<ExclamationTriangleIcon />}
           removeFindDomNode
           headerComponent="h1"
-          bodyContent={
-            <div>
-              {nb.error?.length ? (
-                <ul>
-                  {nb.error.map((e) => (
-                    <li key={e.message}>{e.message}</li>
-                  ))}
-                </ul>
-              ) : (
-                'An unknown error has occurred.'
-              )}
-            </div>
-          }
+          bodyContent={<div>{nb?.lastCondition?.message ?? 'An unknown error has occurred.'}</div>}
         >
           <div className="phase-failed-cursor">
             <ExclamationTriangleIcon className="phase-failed" /> {nb.phase}
