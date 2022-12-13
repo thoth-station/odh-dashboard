@@ -17,38 +17,37 @@ import {
 } from '@patternfly/react-core';
 import { ExclamationCircleIcon } from '@patternfly/react-icons';
 import './ImageForm.scss';
-import { ComponentsTable } from './ComponentsTable';
 import ApplicationsPage from 'pages/ApplicationsPage';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BYONImage } from 'types';
+import { CREDetails } from 'types';
 import { addNotification } from 'redux/actions/actions';
-import { updateBYONImage } from 'services/imagesService';
-import { useWatchBYONImages } from 'utilities/useWatchBYONImages';
-import { useAppDispatch } from '../../redux/hooks';
-
+import { updateCREImage } from 'services/imagesService';
+import { useWatchCREResources } from 'utilities/useWatchCREResources';
+import { useAppDispatch } from '../../../redux/hooks';
+import AnnotationsTable from './AnnotationsTable.tsx';
 
 export const UpdateImageForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTabKey, setActiveTabKey] = React.useState<number | string>('software');
-  const { forceUpdate } = useWatchBYONImages();
+  const { forceUpdate } = useWatchCREResources();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>();
   const dispatch = useAppDispatch();
 
   const defaultFormState = useMemo(() => {
-    const image: BYONImage = location.state?.image;
-    if (!image) {
+    const resource: CREDetails = location.state?.resource;
+    if (!resource) {
       navigate('notebookImages');
       return;
     }
 
     return {
       state: {
-        name: image.name,
-        description: image.description,
-        software: image.software,
-        packages: image.packages,
+        name: resource.name,
+        description: resource.description,
+        softwareAnnotations: resource.softwareAnnotations,
+        packageAnnotations: resource.packageAnnotations,
       },
       valid: {
         name: false,
@@ -109,35 +108,48 @@ export const UpdateImageForm: React.FC = () => {
       return;
     }
 
-    const image: BYONImage = location.state?.image;
+    const image: CREDetails = location.state?.resource;
     setIsLoading(true);
 
-    updateBYONImage({
-      id: image.id,
-      name: formState.state.name,
-      description: formState.state.description,
-      packages: formState.state.packages,
-      software: formState.state.software,
-    })
-      .then((value) => {
-        if (value.success === false) {
-          dispatch(
-            addNotification({
-              status: 'danger',
-              title: 'Error',
-              message: `Unable to update image ${image.name}`,
-              timestamp: new Date(),
-            }),
-          );
-        }
-        forceUpdate();
-        navigate('/notebookImages');
-        return;
+    if (image) {
+      updateCREImage({
+        id: image.id,
+        name: formState.state.name,
+        description: formState.state.description,
+        packageAnnotations: formState.state.packageAnnotations,
+        softwareAnnotations: formState.state.softwareAnnotations,
+        visible: image.visible
       })
-      .catch((error) => {
-        setIsLoading(false);
-        setError(error.toString());
-      });
+        .then((value) => {
+          if (value.success === false) {
+            dispatch(
+              addNotification({
+                status: 'danger',
+                title: 'Error',
+                message: `Unable to update image ${image.name}`,
+                timestamp: new Date(),
+              }),
+            );
+          }
+          forceUpdate();
+          navigate('/notebookImages');
+          return;
+        })
+        .catch((error) => {
+          setIsLoading(false);
+          setError(error.toString());
+        });
+    } else {
+      navigate('/notebookImages');
+      dispatch(
+        addNotification({
+          status: 'danger',
+          title: 'Error',
+          message: 'Unable to update image because image does not exist',
+          timestamp: new Date(),
+        }),
+      );
+    }
   };
 
   return (
@@ -151,7 +163,7 @@ export const UpdateImageForm: React.FC = () => {
         loaded
         empty={false}
         title="Update image"
-        description="Update an existing CNBI image by changing the image name, description, packages, or software."
+        description="Update an existing Custom Runtime Environment by changing the image name, description, and annotations"
       >
         <div className="odh-cluster-settings">
           <PageSection variant={PageSectionVariants.light} padding={{ default: 'noPadding' }}>
@@ -210,28 +222,33 @@ export const UpdateImageForm: React.FC = () => {
                   }}
                 />
               </FormGroup>
-              <FormGroup label="Included Components" fieldId="byon-image-software-packages">
+              <FormGroup
+                label="Included Component Annotations"
+                fieldId="cre-image-software-packages"
+              >
                 <Text component="p" className="gutter-bottom">
-                  Change the advertised {activeTabKey} shown with this notebook image. Modifying the
-                  {activeTabKey} here does not effect the contents of the notebook image.
+                  Change the advertised {activeTabKey} annotations shown with this notebook image.
+                  Removing any {activeTabKey} annotations does not effect the contents of the
+                  notebook image.
                 </Text>
                 <Tabs
                   activeKey={activeTabKey}
                   onSelect={(_event, tabIndex) => setActiveTabKey(tabIndex)}
                   role="region"
                 >
-                  <Tab eventKey="software" title={<TabTitleText>Software</TabTitleText>}>
-                    <ComponentsTable
-                      defaultRows={defaultFormState?.state.software}
-                      selectedRows={formState.state.software}
+                  <Tab
+                    eventKey="software"
+                    title={<TabTitleText>Software Annotations</TabTitleText>}
+                  >
+                    <AnnotationsTable
+                      annotations={defaultFormState?.state.softwareAnnotations}
                       label="software"
                       setValue={setValue}
                     />
                   </Tab>
-                  <Tab eventKey="package" title={<TabTitleText>Packages</TabTitleText>}>
-                    <ComponentsTable
-                      defaultRows={defaultFormState?.state.packages}
-                      selectedRows={formState.state.packages}
+                  <Tab eventKey="package" title={<TabTitleText>Package Annotations</TabTitleText>}>
+                    <AnnotationsTable
+                      annotations={defaultFormState?.state.packageAnnotations}
                       label="packages"
                       setValue={setValue}
                     />

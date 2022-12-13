@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { CREDetails, CREImageStreamUpdateRequest, ImageInfo, ResponseStatus } from '../types';
+import { CREDetails, CREResourceCreateRequest, ResponseStatus } from '../types';
 
-export const fetchImages = (): Promise<ImageInfo[]> => {
-  const url = `/api/images/jupyter`;
+export const fetchCREResources = (): Promise<CREDetails[]> => {
+  const url = '/api/cre';
   return axios
     .get(url)
     .then((response) => {
@@ -13,10 +13,10 @@ export const fetchImages = (): Promise<ImageInfo[]> => {
     });
 };
 
-export const deleteCREImage = (image: CREDetails): Promise<ResponseStatus> => {
-  const url = `/api/images/${image.id}`;
+export const createCREResource = (image: CREResourceCreateRequest): Promise<ResponseStatus> => {
+  const url = '/api/cre';
   return axios
-    .delete(url)
+    .post(url, image)
     .then((response) => {
       return response.data;
     })
@@ -25,10 +25,10 @@ export const deleteCREImage = (image: CREDetails): Promise<ResponseStatus> => {
     });
 };
 
-export const updateCREImage = (image: CREImageStreamUpdateRequest): Promise<ResponseStatus> => {
-  const url = `/api/images/${image.id}`;
+export const deleteCREResource = (id: string): Promise<ResponseStatus> => {
+  const url = `/api/cre/${id}`;
   return axios
-    .put(url, image)
+    .delete(url)
     .then((response) => {
       return response.data;
     })

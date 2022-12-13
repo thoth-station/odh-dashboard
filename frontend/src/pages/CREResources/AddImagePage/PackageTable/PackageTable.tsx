@@ -6,6 +6,9 @@ import {
   EmptyStateBody,
   EmptyStateIcon,
   EmptyStateVariant,
+  ExpandableSectionToggle,
+  Flex,
+  FlexItem,
   Pagination,
   PaginationVariant,
   SearchInput,
@@ -13,34 +16,32 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Tooltip,
 } from '@patternfly/react-core';
-import { BYONImagePackage } from 'types';
-import './ComponentTable.scss';
-import { CubesIcon, PencilAltIcon } from '@patternfly/react-icons';
-import { AddComponentModal } from './AddComponentModal';
+import { CREPackage, CREPackageAnnotation } from 'types';
+import './PackageTable.scss';
+import { CubesIcon, OutlinedQuestionCircleIcon, PencilAltIcon } from '@patternfly/react-icons';
+import { AddPackageModal } from './AddPackageModal';
 
-export const ComponentsTable: React.FC<{
-  selectedRows: BYONImagePackage[];
-  defaultRows?: BYONImagePackage[];
-  label: 'software' | 'packages';
-  setValue: (key: string, value: unknown) => void;
-}> = ({ selectedRows, defaultRows, label, setValue }) => {
+/*
+  A table where users can add packages to an image.
+  Optionally the table can be autofilled with default 
+  packages from annotations in the imagestream. The
+  default packages cannot be removed, however they 
+  can have their version changed
+*/
+export const PackageTable: React.FC<{
+  packageAnnotations?: CREPackageAnnotation[];
+  onChange: (value: string[]) => void;
+}> = ({ packageAnnotations, onChange }) => {
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
-
-  const [allRows, setAllRows] = React.useState<BYONImagePackage[]>([]);
-
-  React.useEffect(() => {
-    if (defaultRows) {
-      setAllRows(defaultRows);
-    }
-  }, [defaultRows]);
-
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-
-  const [activeRow, setActiveRow] = React.useState<BYONImagePackage | undefined>();
-
+  const [activeRow, setActiveRow] = React.useState<CREPackage | undefined>();
   const [searchValue, setSearchValue] = React.useState('');
+  const [expanded, setExpanded] = React.useState(false);
+
+  const [addedRows, setAddedRows] = React.useState<CREPackage[]>([]);
 
   const onSetPage = (
     _event: React.MouseEvent | React.KeyboardEvent | MouseEvent,
@@ -58,25 +59,9 @@ export const ComponentsTable: React.FC<{
     setPage(newPage);
   };
 
-  const setRowSelected = (row: BYONImagePackage, isSelecting = true) => {
-    if (isSelecting) {
-      // add to state
-      setValue(label, [...selectedRows, row]);
-    } else {
-      // remove from state
-      setValue(
-        label,
-        selectedRows.filter((r) => r.name !== row.name),
-      );
-    }
-  };
-
-  const selectAllRows = (isSelecting = true) => setValue(label, isSelecting ? allRows : []);
-
-  const isRowSelected = (row: BYONImagePackage) => selectedRows.some((r) => r.name === row.name);
-
   const columnNames = {
     name: 'Name',
+    specifier: 'Specifier',
     version: 'Version',
   };
 
@@ -86,61 +71,51 @@ export const ComponentsTable: React.FC<{
 
   return (
     <div className="pf-u-box-shadow-sm">
-      <AddComponentModal
-        existingNames={allRows.map((r) => r.name.toLowerCase())}
+      <AddPackageModal
+        existingNames={addedRows.map((r) => r.name.toLowerCase())}
         defaultName={activeRow?.name}
         defaultVersion={activeRow?.version}
+        defaultSpecifier={activeRow?.specifier}
         isOpen={isModalOpen}
-        label={label}
         handleDelete={() => {
-          // remove from selected rows state
-          if (activeRow && isRowSelected(activeRow)) {
-            setValue(
-              label,
-              selectedRows.filter((value) => value.name !== activeRow?.name),
-            );
-          }
-
-          // remove from all rows as it no longer exists
-          setAllRows((prevRows) => prevRows.filter((value) => value.name !== activeRow?.name));
+          const editedRows = addedRows.filter((value) => value.name !== activeRow?.name);
+          setAddedRows(editedRows);
+          onChange(
+            editedRows.map((pkg) => `${pkg.name}${pkg.specifier ?? ''}${pkg.version ?? ''}`),
+          );
           handleModalToggle();
         }}
         handleToggle={handleModalToggle}
-        handleSave={(name, version, key) => {
+        handleSave={(name, version, specifier) => {
           const newRow = {
             name: name,
             version: version,
-            visible: true,
+            specifier: specifier,
           };
-          // remove existing if exists
-          const index = allRows.findIndex((value) => value.name === key);
-          const allEditedRows = allRows.filter((value) => value.name !== key);
-          const selectedEditedRows = selectedRows.filter((value) => value.name !== key);
-
-          // add new row to each list
-          allEditedRows.splice(index === -1 ? 0 : index, 0, newRow);
-          setAllRows(allEditedRows);
-
-          selectedEditedRows.splice(0, 0, newRow);
-          setValue(label, selectedEditedRows);
+          const editedRows = addedRows.filter((value) => value.name !== activeRow?.name);
+          editedRows.push(newRow);
+          setAddedRows(editedRows);
+          onChange(
+            editedRows.map((pkg) => `${pkg.name}${pkg.specifier ?? ''}${pkg.version ?? ''}`),
+          );
         }}
       />
-      {allRows.length === 0 ? (
+      {addedRows.length === 0 && packageAnnotations?.length === 0 ? (
         <EmptyState variant={EmptyStateVariant.small}>
           <EmptyStateIcon icon={CubesIcon} />
           <Title headingLevel="h4" size="lg">
-            No {label} added
+            No packages added
           </Title>
-          <EmptyStateBody>Select the {label} to be included in the new image.</EmptyStateBody>
+          <EmptyStateBody>Add packages to the image.</EmptyStateBody>
           <Button
-            data-id={'add-' + label + '-button'}
+            data-id={'add-package-button'}
             variant="secondary"
             onClick={() => {
               setActiveRow(undefined);
               handleModalToggle();
             }}
           >
-            Add {label === 'packages' ? 'package' : 'software'}
+            Add package
           </Button>
         </EmptyState>
       ) : (
@@ -161,46 +136,73 @@ export const ComponentsTable: React.FC<{
               <ToolbarItem variant="separator" />
               <ToolbarItem>
                 <Button
-                  data-id={'add-' + label + '-button'}
+                  data-id={'add-packages-button'}
                   variant="primary"
                   onClick={() => {
                     setActiveRow(undefined);
                     handleModalToggle();
                   }}
                 >
-                  Add {label === 'packages' ? 'package' : 'software'}
+                  Add package
                 </Button>
               </ToolbarItem>
             </ToolbarContent>
           </Toolbar>
-          <TableComposable aria-label="Selectable table">
+          <TableComposable variant="compact" aria-label="Selectable table">
             <Thead>
               <Tr>
-                <Th
-                  select={{
-                    onSelect: (_event, isSelecting) => selectAllRows(isSelecting),
-                    isSelected: selectedRows.length === allRows.length,
-                  }}
-                />
                 <Th>{columnNames.name}</Th>
+                <Th>{columnNames.specifier}</Th>
                 <Th>{columnNames.version}</Th>
                 <Th />
               </Tr>
             </Thead>
             <Tbody>
-              {allRows
+              <Tr isHoverable onRowClick={() => setExpanded(!expanded)}>
+                <Td colSpan={4}>
+                  <Flex>
+                    <FlexItem spacer={{ default: 'spacerNone' }}>
+                      <ExpandableSectionToggle
+                        onToggle={() => null}
+                        isExpanded={expanded}
+                        direction="up"
+                      >
+                        {expanded ? 'Hide included packages' : 'Show included packages'}
+                      </ExpandableSectionToggle>
+                    </FlexItem>
+                    <FlexItem>
+                      <Tooltip
+                        removeFindDomNode
+                        content="Packages included in the base image cannot be removed."
+                      >
+                        <OutlinedQuestionCircleIcon />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
+                </Td>
+              </Tr>
+              {packageAnnotations?.map((row) => (
+                <Tr
+                  key={row.name + row.version}
+                  isHidden={!expanded}
+                  style={{
+                    borderLeft: '3px solid var(--pf-global--primary-color--100)',
+                  }}
+                >
+                  <Td dataLabel={columnNames.name}>{row.name}</Td>
+                  <Td />
+                  <Td dataLabel={columnNames.version}>{row.version}</Td>
+                  <Td />
+                </Tr>
+              ))}
+              {addedRows
+                .sort((a, b) => a.name.localeCompare(b.name))
                 .filter((row) => row.name.toLowerCase().includes(searchValue))
                 .slice((page - 1) * perPage, (page - 1) * perPage + perPage)
-                .map((row, rowIndex) => (
+                .map((row) => (
                   <Tr key={row.name}>
-                    <Td
-                      select={{
-                        rowIndex,
-                        onSelect: (_event, isSelecting) => setRowSelected(row, isSelecting),
-                        isSelected: isRowSelected(row),
-                      }}
-                    />
                     <Td dataLabel={columnNames.name}>{row.name}</Td>
+                    <Td dataLabel={columnNames.specifier}>{row.specifier}</Td>
                     <Td dataLabel={columnNames.version}>{row.version}</Td>
                     <Td style={{ textAlign: 'right' }}>
                       <Button
@@ -223,7 +225,7 @@ export const ComponentsTable: React.FC<{
               <ToolbarItem variant="pagination">
                 <Pagination
                   perPageComponent="button"
-                  itemCount={allRows.length}
+                  itemCount={addedRows.length}
                   perPage={perPage}
                   page={page}
                   onSetPage={onSetPage}
@@ -239,3 +241,5 @@ export const ComponentsTable: React.FC<{
     </div>
   );
 };
+
+export default PackageTable;

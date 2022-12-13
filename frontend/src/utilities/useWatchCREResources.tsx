@@ -1,24 +1,24 @@
 import * as React from 'react';
-import { fetchBYONImages } from '../services/imagesService';
-import { BYONImage } from '../types';
+import { fetchCREResources } from '../services/creServices';
+import { CREDetails } from '../types';
 import { POLL_INTERVAL } from './const';
 
-export const useWatchBYONImages = (): {
-  images: BYONImage[];
+export const useWatchCREResources = (): {
+  resources: CREDetails[];
   loaded: boolean;
   loadError: Error | undefined;
   forceUpdate: () => void;
 } => {
   const [loaded, setLoaded] = React.useState<boolean>(false);
   const [loadError, setLoadError] = React.useState<Error>();
-  const [images, setImages] = React.useState<BYONImage[]>([]);
+  const [resources, setResources] = React.useState<CREDetails[]>([]);
   const forceUpdate = () => {
     setLoaded(false);
-    fetchBYONImages()
-      .then((data: BYONImage[]) => {
+    fetchCREResources()
+      .then((data: CREDetails[]) => {
         setLoaded(true);
         setLoadError(undefined);
-        setImages(data);
+        setResources(data);
       })
       .catch((e) => {
         setLoadError(e);
@@ -29,14 +29,14 @@ export const useWatchBYONImages = (): {
     let watchHandle;
     let cancelled = false;
     const watchImages = () => {
-      fetchBYONImages()
-        .then((data: BYONImage[]) => {
+      fetchCREResources()
+        .then((data: CREDetails[]) => {
           if (cancelled) {
             return;
           }
           setLoaded(true);
           setLoadError(undefined);
-          setImages(data);
+          setResources(data);
         })
         .catch((e) => {
           if (cancelled) {
@@ -58,5 +58,5 @@ export const useWatchBYONImages = (): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { images: images || [], loaded, loadError, forceUpdate };
+  return { resources: resources || [], loaded, loadError, forceUpdate };
 };

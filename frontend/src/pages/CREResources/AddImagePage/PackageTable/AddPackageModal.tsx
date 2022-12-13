@@ -4,53 +4,60 @@ import {
   FormGroup,
   Modal,
   ModalVariant,
+  Select,
+  SelectOption,
+  SelectVariant,
   Split,
   SplitItem,
   TextInput,
 } from '@patternfly/react-core';
 import { ExclamationCircleIcon } from '@patternfly/react-icons';
 import React from 'react';
+import { CREPackage } from 'types';
 
-type AddComponentModalType = {
+type AddPackageModalType = {
   existingNames: string[];
-  handleSave: (name: string, version: string, key: string) => void;
+  handleSave: (name: string, version?: string, specifier?: CREPackage['specifier']) => void;
   handleDelete: () => void;
-  label: 'software' | 'packages';
   isOpen: boolean;
   handleToggle: () => void;
   defaultName?: string;
   defaultVersion?: string;
+  defaultSpecifier: CREPackage['specifier'];
 };
 
-export const AddComponentModal: React.FC<AddComponentModalType> = ({
+export const AddPackageModal: React.FC<AddPackageModalType> = ({
   existingNames,
   handleSave,
   handleDelete,
-  label,
   isOpen,
   handleToggle,
-  defaultName = '',
-  defaultVersion = '',
+  defaultName,
+  defaultVersion,
+  defaultSpecifier,
 }) => {
-  const [name, setName] = React.useState('');
-  const [version, setVersion] = React.useState('');
+  const [name, setName] = React.useState(defaultName);
+  const [specifier, setSpecifier] = React.useState<CREPackage['specifier']>(defaultSpecifier);
+  const [version, setVersion] = React.useState(defaultVersion);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   // TODO validation can be supported by Thoth API in the future
   const validated =
     name &&
     name !== '' &&
     (!existingNames.includes(name.toLowerCase()) || defaultName === name) &&
-    version &&
-    version !== '';
+    !((!version && specifier) || (version && !specifier));
 
   React.useEffect(() => {
     setName(defaultName);
     setVersion(defaultVersion);
-  }, [isOpen, defaultName, defaultVersion]);
+    setSpecifier(defaultSpecifier);
+  }, [isOpen, defaultName, defaultVersion, defaultSpecifier]);
 
   const clearInputs = () => {
-    setName('');
-    setVersion('');
+    setName(undefined);
+    setVersion(undefined);
+    setSpecifier(undefined);
   };
 
   const editMode = defaultName !== '' && defaultVersion !== '';
@@ -58,7 +65,7 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={`${editMode ? 'Edit' : 'Add'} ${label === 'packages' ? 'Package' : 'Software'}`}
+      title={`${editMode ? 'Edit' : 'Add'} Package`}
       isOpen={isOpen}
       onClose={handleToggle}
       footer={
@@ -69,9 +76,11 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
               key="confirm"
               variant="primary"
               onClick={() => {
-                handleToggle();
-                handleSave(name, version, defaultName);
-                clearInputs();
+                if (name) {
+                  handleToggle();
+                  handleSave(name, version, specifier);
+                  clearInputs();
+                }
               }}
             >
               {editMode ? 'Save' : 'Add'}
@@ -108,41 +117,59 @@ export const AddComponentModal: React.FC<AddComponentModalType> = ({
         <FormGroup
           label="Name"
           isRequired
-          fieldId="byon-image-name-label"
+          fieldId="cre-image-name-label"
           helperTextInvalid="Name already exists in the table."
           helperTextInvalidIcon={<ExclamationCircleIcon />}
           validated={
-            !existingNames.includes(name.toLowerCase()) || defaultName === name
+            (name && !existingNames.includes(name.toLowerCase())) || defaultName === name
               ? undefined
               : 'error'
           }
         >
           <TextInput
-            id="byon-image-name-input"
+            id="cre-image-name-input"
             isRequired
             type="text"
-            data-id="byon-image-name-input"
-            name="byon-image-name-input"
-            value={name}
+            data-id="cre-image-name-input"
+            name="cre-image-name-input"
+            value={name ?? ''}
             onChange={(value) => {
               setName(value);
             }}
           />
         </FormGroup>
+        <FormGroup label="Specifier" fieldId="cre-image-specifier-label">
+          <Select
+            selections={specifier}
+            variant={SelectVariant.single}
+            isOpen={dropdownOpen}
+            onToggle={() => setDropdownOpen(!dropdownOpen)}
+            onSelect={(e, newValue) => {
+              const sp = newValue?.toString() as CREPackage['specifier'];
+              setSpecifier(sp);
+              setDropdownOpen(false);
+            }}
+          >
+            {[
+              <SelectOption key={0} value="" isPlaceholder />,
+              ...['==', '>=', '<=', '<', '>', '~='].map((option) => (
+                <SelectOption key={option} value={option} />
+              )),
+            ]}
+          </Select>
+        </FormGroup>
         <FormGroup
           label="Version"
-          isRequired
-          fieldId="byon-image-version-label"
+          fieldId="cre-image-version-label"
           helperTextInvalid="This field is required."
           helperTextInvalidIcon={<ExclamationCircleIcon />}
         >
           <TextInput
-            id="byon-image-version-input"
-            isRequired
+            id="cre-image-version-input"
             type="text"
-            data-id="byon-image-version-input"
-            name="byon-image-version-input"
-            value={version}
+            data-id="cre-image-version-input"
+            name="cre-image-version-input"
+            value={version ?? ''}
             onChange={(value) => {
               setVersion(value);
             }}

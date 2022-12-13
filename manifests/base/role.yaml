@@ -122,3 +122,15 @@ rules:
       - console.openshift.io
     resources:
       - odhquickstarts
+  - apiGroups:
+      - meteor.zone
+    resources:
+      - customruntimeenvironments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
