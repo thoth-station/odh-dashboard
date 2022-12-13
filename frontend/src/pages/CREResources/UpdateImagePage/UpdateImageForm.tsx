@@ -118,6 +118,7 @@ export const UpdateImageForm: React.FC = () => {
         description: formState.state.description,
         packageAnnotations: formState.state.packageAnnotations,
         softwareAnnotations: formState.state.softwareAnnotations,
+        visible: image.visible
       })
         .then((value) => {
           if (value.success === false) {

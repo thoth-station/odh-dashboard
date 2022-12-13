@@ -138,7 +138,7 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
             }}
           />
         </FormGroup>
-        <FormGroup label="Specifier" isRequired fieldId="cre-image-specifier-label">
+        <FormGroup label="Specifier" fieldId="cre-image-specifier-label">
           <Select
             selections={specifier}
             variant={SelectVariant.single}
@@ -160,14 +160,12 @@ export const AddPackageModal: React.FC<AddPackageModalType> = ({
         </FormGroup>
         <FormGroup
           label="Version"
-          isRequired
           fieldId="cre-image-version-label"
           helperTextInvalid="This field is required."
           helperTextInvalidIcon={<ExclamationCircleIcon />}
         >
           <TextInput
             id="cre-image-version-input"
-            isRequired
             type="text"
             data-id="cre-image-version-input"
             name="cre-image-version-input"
