@@ -431,6 +431,9 @@ export type CREImageStreamDetails = {
 // CRE resource extracted details
 export type CREResourceDetails = {
   id: string;
+  name: string;
+  user: string;
+  description?: string;
   uploaded: Date;
   lastCondition?: {
     lastTransitionTime?: string;
