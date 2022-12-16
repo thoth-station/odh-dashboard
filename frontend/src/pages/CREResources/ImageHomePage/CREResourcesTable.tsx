@@ -176,7 +176,6 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
     }
     else return resources
   }, [activeSortIndex, resources, activeSortDirection])
-  
 
   const getSortParams = (columnIndex: number): ThProps['sort'] => ({
     sortBy: {
