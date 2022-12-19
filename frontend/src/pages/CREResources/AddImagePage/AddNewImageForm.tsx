@@ -24,6 +24,7 @@ import './AddNewImageForm.scss';
 import ExistingImageForm, { ExistingImageFormType } from './ExisitingImageForm';
 import BuildImageForm, { BuildImageFormType } from './BuildImageForm';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import GitImageForm, { GitImageFormType } from './GitImageForm';
 
 export const AddNewImageForm: React.FC = () => {
   const userName = useAppSelector((state) => state.user || '');
@@ -49,6 +50,20 @@ export const AddNewImageForm: React.FC = () => {
     valid: {
       repository: false,
       name: false,
+    },
+  };
+  // default state for "git image" form
+  const defaultGitState: GitImageFormType = {
+    state: {
+      repository: '',
+      name: '',
+      description: '',
+      gitRef: 'master'
+    },
+    valid: {
+      repository: false,
+      name: false,
+      gitRef: true,
     },
   };
   // default state for "build image" form
@@ -92,11 +107,13 @@ export const AddNewImageForm: React.FC = () => {
       ...defaultImportState.state,
       ...defaultBuildState.state,
       ...defaultExistingState.state,
+      ...defaultGitState.state,
     },
     valid: {
       ...defaultImportState.valid,
       ...defaultBuildState.valid,
       ...defaultExistingState.valid,
+      ...defaultGitState.valid
     },
   };
 
@@ -125,11 +142,15 @@ export const AddNewImageForm: React.FC = () => {
 
   const [formState, formDispatch] = useReducer(reducer, defaultFormState);
 
-  const imageSelectOptions: { key: 'import' | 'existing' | 'build'; value: string }[] = useMemo(
+  const imageSelectOptions: { key: 'import' | 'git' | 'existing' | 'build'; value: string }[] = useMemo(
     () => [
       {
         key: 'import',
         value: 'Import an existing image',
+      },
+      {
+        key: 'git',
+        value: 'Build a new image from a git repository',
       },
       {
         key: 'existing',
@@ -169,6 +190,28 @@ export const AddNewImageForm: React.FC = () => {
           valid = false;
         }
         break;
+        case 'git':
+          if (formState.state.name.length > 0) {
+            formDispatch({ type: 'validate', key: 'name', value: true });
+          } else {
+            formDispatch({ type: 'validate', key: 'name', value: false });
+            valid = false;
+          }
+  
+          if (formState.state.repository.length > 0) {
+            formDispatch({ type: 'validate', key: 'repository', value: true });
+          } else {
+            formDispatch({ type: 'validate', key: 'repository', value: false });
+            valid = false;
+          }
+
+          if (formState.state.repository.length > 0) {
+            formDispatch({ type: 'validate', key: 'gitRef', value: true });
+          } else {
+            formDispatch({ type: 'validate', key: 'gitRef', value: false });
+            valid = false;
+          }
+          break;
       case 'existing':
         if (formState.state.name.length > 0) {
           formDispatch({ type: 'validate', key: 'name', value: true });
@@ -244,6 +287,10 @@ export const AddNewImageForm: React.FC = () => {
         return (
           <ImportImageForm state={formState.state} valid={formState.valid} setValue={setValue} />
         );
+      case 'git':
+        return (
+          <GitImageForm state={formState.state} valid={formState.valid} setValue={setValue} />
+        );
       case 'existing':
         return (
           <ExistingImageForm state={formState.state} valid={formState.valid} setValue={setValue} />
@@ -281,11 +328,14 @@ export const AddNewImageForm: React.FC = () => {
     )?.key;
 
     if (selectedOption) {
+      const type = selectedOption === 'import' ? 'ImageImport' : selectedOption === 'git' ? "GitRepository" : 'PackageList'
       createCREResource({
-        buildType: selectedOption === 'import' ? 'ImageImport' : 'PackageList',
+        buildType: type,
         name: formState.state.name,
         description: formState.state?.description,
         user: userName,
+        gitRef: formState.state.gitRef,
+        repository: formState.state?.repository,
         fromImage: formState.state?.repository,
         baseImage: formState.state.source
           ? `${formState.state?.source?.image?.dockerImageRepo}:${

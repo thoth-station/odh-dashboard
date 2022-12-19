@@ -393,6 +393,12 @@ export type CREImageImportSpec = {
   };
 };
 
+export type CREGitRepositorySpec = {
+  buildType: 'GitRepository'
+  repository: string;
+  gitRef: string;
+}
+
 export type CREPackageListSpec = {
   buildType: 'PackageList';
   baseImage: string;
@@ -449,7 +455,7 @@ export type CREResource = {
     annotations?: { [key: string]: string };
     creationTimestamp?: Date;
   };
-  spec: CREImageImportSpec | CREPackageListSpec;
+  spec: CREImageImportSpec | CREPackageListSpec | CREGitRepositorySpec;
   status?: {
     phase?: CREImageStreamPhase;
     conditions?: {
@@ -472,11 +478,13 @@ export type CREImageStreamUpdateRequest = {
 };
 
 export type CREResourceCreateRequest = {
-  buildType: 'ImageImport' | 'PackageList';
+  buildType: "ImageImport" | "PackageList" | "GitRepository";
   name: string;
   description?: string;
   user: string;
   fromImage?: string;
+  repository?: string;
+  gitRef?: string,
   imagePullSecretName?: string;
   runtimeEnvironment?: {
     osName: string;
