@@ -10,24 +10,15 @@ import '../../detail/storage/ManageStorageModal.scss';
 type StorageFieldType = {
   storageData: StorageData;
   setStorageData: UpdateObjectAtPropAndValue<StorageData>;
+  editStorage: string;
 };
 
-const StorageField: React.FC<StorageFieldType> = ({ storageData, setStorageData }) => {
+const StorageField: React.FC<StorageFieldType> = ({ storageData, setStorageData, editStorage }) => {
   const { storageType, creating, existing } = storageData;
 
   return (
     <FormGroup fieldId="cluster-storage" role="radiogroup">
       <Stack hasGutter>
-        <StackItem>
-          <Radio
-            name="ephemeral-storage-type-radio"
-            id="ephemeral-storage-type-radio"
-            label="Ephemeral storage"
-            description="This is temporary storage that is cleared when logged out."
-            isChecked={storageType === StorageType.EPHEMERAL}
-            onChange={() => setStorageData('storageType', StorageType.EPHEMERAL)}
-          />
-        </StackItem>
         <StackItem>
           <Radio
             className="checkbox-radio-fix-body-width"
@@ -63,6 +54,7 @@ const StorageField: React.FC<StorageFieldType> = ({ storageData, setStorageData 
                 <AddExistingStorageField
                   data={existing}
                   setData={(data) => setStorageData('existing', data)}
+                  editStorage={editStorage}
                   selectDirection="up"
                   menuAppendTo={getDashboardMainContainer()}
                 />

@@ -8,13 +8,15 @@ import { UpdateObjectAtPropAndValue } from '../../../types';
 type CreateNewStorageSectionProps = {
   data: CreatingStorageObject;
   setData: UpdateObjectAtPropAndValue<CreatingStorageObject>;
-  disableSize?: boolean;
+  currentSize?: string;
+  autoFocusName?: boolean;
 };
 
 const CreateNewStorageSection: React.FC<CreateNewStorageSectionProps> = ({
   data,
   setData,
-  disableSize,
+  currentSize,
+  autoFocusName,
 }) => {
   return (
     <Stack hasGutter>
@@ -24,13 +26,13 @@ const CreateNewStorageSection: React.FC<CreateNewStorageSectionProps> = ({
           descriptionFieldId="create-new-storage-description"
           data={data.nameDesc}
           setData={(newData) => setData('nameDesc', newData)}
-          autoFocusName
+          autoFocusName={autoFocusName}
         />
       </StackItem>
       <StackItem>
         <PVSizeField
           fieldID="create-new-storage-size"
-          disable={disableSize}
+          currentSize={currentSize}
           size={data.size}
           setSize={(size) => setData('size', size)}
         />

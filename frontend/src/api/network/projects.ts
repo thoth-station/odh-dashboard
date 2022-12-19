@@ -1,15 +1,18 @@
+import axios from 'axios';
 import {
   k8sCreateResource,
   k8sDeleteResource,
   k8sGetResource,
   k8sListResource,
   K8sModelCommon,
+  K8sResourceCommon,
   k8sUpdateResource,
 } from '@openshift/dynamic-plugin-sdk-utils';
 import { ProjectKind } from '../../k8sTypes';
-import { usernameTranslate } from '../../utilities/notebookControllerUtils';
 import { ProjectModel } from '../models';
 import { translateDisplayNameForK8s } from '../../pages/projects/utils';
+import { ODH_PRODUCT_NAME } from '../../utilities/const';
+import { listServingRuntimes } from './servingRuntimes';
 
 export const getProject = (projectName: string): Promise<ProjectKind> => {
   return k8sGetResource<ProjectKind>({
@@ -18,62 +21,108 @@ export const getProject = (projectName: string): Promise<ProjectKind> => {
   });
 };
 
-export const getProjects = (labelSelector?: string): Promise<ProjectKind[]> => {
-  const queryOptions = labelSelector ? { queryParams: { labelSelector } } : undefined;
+export const getProjects = (withLabel?: string): Promise<ProjectKind[]> => {
   return k8sListResource<ProjectKind>({
     model: ProjectModel,
-    queryOptions,
+    queryOptions: withLabel ? { queryParams: { labelSelector: withLabel } } : undefined,
   }).then((listResource) => listResource.items);
+};
+
+export const getDSGProjects = (): Promise<ProjectKind[]> => {
+  return getProjects('opendatahub.io/dashboard=true');
 };
 
 export const createProject = (
   username: string,
-  name: string,
+  displayName: string,
   description: string,
   k8sName?: string,
 ): Promise<string> => {
-  const translatedUsername = usernameTranslate(username);
-
   // Specific types and models for creating projects
-  const NamespaceModel: K8sModelCommon = {
+  const ProjectRequest: K8sModelCommon = {
+    apiGroup: 'project.openshift.io',
     apiVersion: 'v1',
-    kind: 'Namespace',
-    plural: 'namespaces',
+    kind: 'ProjectRequest',
+    plural: 'projectrequests',
   };
-  type NamespaceKind = ProjectKind & {
+  type ProjectRequestKind = K8sResourceCommon & {
     metadata: {
       name: string;
     };
+    displayName?: string;
+    description?: string;
   };
 
+  const name = k8sName || translateDisplayNameForK8s(displayName);
+
   return new Promise((resolve, reject) => {
-    k8sCreateResource<NamespaceKind, NamespaceKind>({
-      model: NamespaceModel,
+    k8sCreateResource<ProjectRequestKind, ProjectKind>({
+      model: ProjectRequest,
       resource: {
-        apiVersion: 'v1',
-        kind: 'Namespace',
+        apiVersion: 'project.openshift.io/v1',
+        kind: 'ProjectRequest',
         metadata: {
           name: k8sName || translateDisplayNameForK8s(name),
-          annotations: {
-            'openshift.io/description': description,
-            'openshift.io/display-name': name,
-            'openshift.io/requester': username,
-          },
-          labels: {
-            'opendatahub.io/dashboard': 'true',
-            'opendatahub.io/user': translatedUsername,
-          },
         },
+        description,
+        displayName,
       },
     })
-      .then((namespace) => {
-        if (!namespace) {
-          reject('Unable to create a project due to permissions.');
-          return;
+      .then((project) => {
+        if (!project) {
+          throw new Error('Unable to create a project due to permissions.');
         }
-        resolve(namespace.metadata.name);
+
+        const projectName = project.metadata.name;
+
+        axios(`/api/namespaces/${projectName}/0`)
+          .then((response) => {
+            const applied = response.data?.applied ?? false;
+
+            if (!applied) {
+              // If we somehow failed, the only solution is for an admin to go add the labels to the Namespace object manually
+              throw new Error(
+                `Unable to fully create your project. Ask a ${ODH_PRODUCT_NAME} admin for assistance.`,
+              );
+            }
+
+            resolve(projectName);
+          })
+          .catch(reject);
       })
       .catch(reject);
+  });
+};
+
+export const getModelServingProjects = (): Promise<ProjectKind[]> => {
+  return getProjects('opendatahub.io/dashboard=true,modelmesh-enabled=true');
+};
+
+async function filter(arr, callback) {
+  const fail = Symbol();
+  return (
+    await Promise.all(arr.map(async (item) => ((await callback(item)) ? item : fail)))
+  ).filter((i) => i !== fail);
+}
+
+export const getModelServingProjectsAvailable = async (): Promise<ProjectKind[]> => {
+  return getModelServingProjects().then((projects) => {
+    return filter(projects, async (project) => {
+      const projectServing = await listServingRuntimes(project.metadata.name);
+      return projectServing.length !== 0;
+    });
+  });
+};
+
+export const addSupportModelMeshProject = (name: string): Promise<string> => {
+  return axios(`/api/namespaces/${name}/1`).then((response) => {
+    const applied = response.data?.applied ?? false;
+    if (!applied) {
+      throw new Error(
+        `Unable to enable model serving in your project. Ask a ${ODH_PRODUCT_NAME} admin for assistance.`,
+      );
+    }
+    return name;
   });
 };
 

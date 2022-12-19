@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { ActionsColumn, Td, Tr } from '@patternfly/react-table';
-import { Text, Title } from '@patternfly/react-core';
-import ConnectedNotebooks from '../../../notebook/ConnectedNotebooks';
+import { DropdownDirection, Text, Title } from '@patternfly/react-core';
+import ConnectedNotebookNames from '../../../notebook/ConnectedNotebookNames';
 import { ConnectedNotebookContext } from '../../../notebook/useRelatedNotebooks';
 import { DataConnection } from '../../../types';
 import {
@@ -12,24 +12,22 @@ import {
   getDataConnectionType,
 } from './utils';
 import ResourceNameTooltip from '../../../components/ResourceNameTooltip';
+import EmptyTableCellForAlignment from '../../../components/EmptyTableCellForAlignment';
 
 type DataConnectionsTableRowProps = {
   obj: DataConnection;
+  onEditDataConnection: (pvc: DataConnection) => void;
   onDeleteDataConnection: (dataConnection: DataConnection) => void;
-  onConnectExistingWorkbench: (dataConnection: DataConnection) => void;
 };
 
 const DataConnectionsTableRow: React.FC<DataConnectionsTableRowProps> = ({
   obj,
+  onEditDataConnection,
   onDeleteDataConnection,
-  onConnectExistingWorkbench,
 }) => {
   return (
     <Tr>
-      {/* This cell is used to align with the other lists which have a toggle button */}
-      <Td className="pf-c-table__toggle">
-        <div style={{ width: 46 }} />
-      </Td>
+      <EmptyTableCellForAlignment />
       <Td dataLabel="Name">
         <Title headingLevel="h4">
           <ResourceNameTooltip resource={obj.data}>
@@ -40,19 +38,20 @@ const DataConnectionsTableRow: React.FC<DataConnectionsTableRowProps> = ({
       </Td>
       <Td dataLabel="Type">{getDataConnectionType(obj)}</Td>
       <Td dataLabel="Connected workbenches">
-        <ConnectedNotebooks
-          context={ConnectedNotebookContext.DATA_CONNECTION}
+        <ConnectedNotebookNames
+          context={ConnectedNotebookContext.EXISTING_DATA_CONNECTION}
           relatedResourceName={getDataConnectionResourceName(obj)}
         />
       </Td>
       <Td dataLabel="Provider">{getDataConnectionProvider(obj)}</Td>
       <Td isActionCell>
         <ActionsColumn
+          dropdownDirection={DropdownDirection.up}
           items={[
             {
-              title: 'Change connected workbenches',
+              title: 'Edit data connection',
               onClick: () => {
-                onConnectExistingWorkbench(obj);
+                onEditDataConnection(obj);
               },
             },
             {

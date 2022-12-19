@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Button,
   Bullseye,
@@ -162,17 +162,20 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
     return [name, description, phase, visible.toString(), user, uploaded.toString()];
   };
 
-  if (activeSortIndex !== undefined) {
-    [...resources].sort((a, b) => {
-      const aValue = getSortableRowValues(a)[activeSortIndex];
-      const bValue = getSortableRowValues(b)[activeSortIndex];
-
-      if (activeSortDirection === 'asc') {
-        return (aValue as string).localeCompare(bValue as string);
-      }
-      return (bValue as string).localeCompare(aValue as string);
-    });
-  }
+  const sortedRows = useMemo(() => {
+    if (activeSortIndex !== undefined) {
+      return [...resources].sort((a, b) => {
+        const aValue = getSortableRowValues(a)[activeSortIndex];
+        const bValue = getSortableRowValues(b)[activeSortIndex];
+  
+        if (activeSortDirection === 'asc') {
+          return (aValue as string).localeCompare(bValue as string);
+        }
+        return (bValue as string).localeCompare(aValue as string);
+      });
+    }
+    else return resources
+  }, [activeSortIndex, resources, activeSortDirection])
 
   const getSortParams = (columnIndex: number): ThProps['sort'] => ({
     sortBy: {
@@ -236,8 +239,8 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
     option: 'name',
     count: resources.length,
   });
-  const [selected, setSelected] = React.useState<string>('name');
-  const [tableSelectIsOpen, setTableSelectIsOpen] = React.useState<boolean>(false);
+  const [selected, setSelected] = React.useState('name');
+  const [tableSelectIsOpen, setTableSelectIsOpen] = React.useState(false);
 
   const items = (
     <React.Fragment>
@@ -354,7 +357,7 @@ export const CREResourcesTable: React.FC<CREResourcesTableProps> = ({ resources,
           </Tr>
         </Thead>
         {tableFilter.count > 0 ? (
-          resources.map((resource, rowIndex) => {
+          sortedRows.map((resource, rowIndex) => {
             const packages: React.ReactNode[] = [];
             resource.packageAnnotations?.forEach((nbpackage, i) => {
               packages.push(

@@ -54,6 +54,7 @@ export const processCREResourceInfo = (
   image?: CREImageStreamDetails,
 ): CREDetails => {
   const resourceInfo: CREDetails = {
+    ...(image ?? {}),
     id: resource.metadata.name,
     // resource id keeps a reference to the crd id so it can be found again
     resourceId: resource.metadata.name,
@@ -65,8 +66,6 @@ export const processCREResourceInfo = (
     description: resource.metadata.annotations[CRE_ANNOTATIONS.DESC],
     user: resource.metadata.annotations[CRE_ANNOTATIONS.CREATOR],
     phase: resource.status.phase,
-    // override above if image exists
-    ...(image ?? {}),
   };
 
   return resourceInfo;

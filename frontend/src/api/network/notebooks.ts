@@ -115,9 +115,10 @@ const assembleNotebook = (data: StartNotebookData, username: string): NotebookKi
       annotations: {
         'openshift.io/display-name': notebookName,
         'openshift.io/description': description || '',
-        'notebooks.opendatahub.io/oauth-logout-url': `${origin}/notebookController/${translatedUsername}/home`,
+        'notebooks.opendatahub.io/oauth-logout-url': `${origin}/projects/${projectName}?notebookLogout=${notebookId}`,
         'notebooks.opendatahub.io/last-size-selection': notebookSize.name,
         'notebooks.opendatahub.io/last-image-selection': imageSelection,
+        'notebooks.opendatahub.io/inject-oauth': 'true',
         'opendatahub.io/username': username,
       },
       name: notebookId,
@@ -142,7 +143,7 @@ const assembleNotebook = (data: StartNotebookData, username: string): NotebookKi
                   --ServerApp.password=''
                   --ServerApp.base_url=/notebook/${projectName}/${notebookId}
                   --ServerApp.quit_button=False
-                  --ServerApp.tornado_settings={"user":"${translatedUsername}","hub_host":"${origin}","hub_prefix":"/notebookController/${translatedUsername}"}`,
+                  --ServerApp.tornado_settings={"user":"${translatedUsername}","hub_host":"${origin}","hub_prefix":"/projects/${projectName}"}`,
                 },
                 {
                   name: 'JUPYTER_IMAGE',
@@ -254,6 +255,9 @@ export const updateNotebook = (
 ): Promise<NotebookKind> => {
   data.notebookId = existingNotebook.metadata.name;
   const notebook = assembleNotebook(data, username);
+
+  // clean the envFrom array in case of merging the old value again
+  existingNotebook.spec.template.spec.containers[0].envFrom = [];
 
   return k8sUpdateResource<NotebookKind>({
     model: NotebookModel,
@@ -391,19 +395,13 @@ export const removeNotebookPVC = (
           {
             op: 'replace',
             path: '/spec/template/spec/volumes',
-            value:
-              filteredVolumes.length === 0
-                ? [{ name: 'cache-volume', emptyDir: {} }]
-                : filteredVolumes,
+            value: filteredVolumes,
           },
           {
             op: 'replace',
             // TODO: can we assume first container?
             path: '/spec/template/spec/containers/0/volumeMounts',
-            value:
-              filteredVolumeMounts.length === 0
-                ? [{ mountPath: '/cache', name: 'cache-volume' }]
-                : filteredVolumeMounts,
+            value: filteredVolumeMounts,
           },
         ];
 

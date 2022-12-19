@@ -29,7 +29,10 @@ const StopServerModal: React.FC<StopServerModalProps> = ({ notebooksToStop, onNo
       notebooksToStop.map((notebook) => {
         const notebookName = notebook.metadata.name || '';
         if (!notebookName) return Promise.resolve();
-        return stopNotebook();
+        const notebookUser = notebook.metadata.annotations?.['opendatahub.io/username'];
+        if (!notebookUser) return Promise.resolve();
+
+        return stopNotebook(notebookUser);
       }),
     )
       .then(() => {
@@ -68,8 +71,7 @@ const StopServerModal: React.FC<StopServerModalProps> = ({ notebooksToStop, onNo
       onClose={onClose}
       actions={modalActions}
     >
-      Are you sure you want to stop {hasMultipleServers ? 'all servers' : 'the server'}? Any changes
-      made without saving will be lost.
+      Are you sure you want to stop {textToShow}? Any changes made without saving will be lost.
     </Modal>
   );
 };

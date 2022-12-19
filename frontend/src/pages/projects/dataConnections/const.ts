@@ -1,9 +1,12 @@
+import { AWSDataEntry } from '../types';
+
 export enum AWS_KEYS {
   NAME = 'Name',
   ACCESS_KEY_ID = 'AWS_ACCESS_KEY_ID',
   SECRET_ACCESS_KEY = 'AWS_SECRET_ACCESS_KEY',
   S3_ENDPOINT = 'AWS_S3_ENDPOINT',
   DEFAULT_REGION = 'AWS_DEFAULT_REGION',
+  AWS_S3_BUCKET = 'AWS_S3_BUCKET',
 }
 
 export const AWS_REQUIRED_KEYS: AWS_KEYS[] = [
@@ -12,7 +15,7 @@ export const AWS_REQUIRED_KEYS: AWS_KEYS[] = [
   AWS_KEYS.SECRET_ACCESS_KEY,
 ];
 
-export const EMPTY_AWS_SECRET_DATA: { key: AWS_KEYS; value: string }[] = [
+export const EMPTY_AWS_SECRET_DATA: AWSDataEntry = [
   {
     key: AWS_KEYS.NAME,
     value: '',
@@ -23,6 +26,10 @@ export const EMPTY_AWS_SECRET_DATA: { key: AWS_KEYS; value: string }[] = [
   },
   {
     key: AWS_KEYS.SECRET_ACCESS_KEY,
+    value: '',
+  },
+  {
+    key: AWS_KEYS.AWS_S3_BUCKET,
     value: '',
   },
   {

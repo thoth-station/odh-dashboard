@@ -1,6 +1,13 @@
 import { OdhApplication, OdhDocument, OdhDocumentType } from '../types';
 import { CATEGORY_ANNOTATION, ODH_PRODUCT_NAME } from './const';
 
+/**
+ * Feature flags are required in the config -- but upgrades can be mixed and omission of the property
+ * usually ends up being enabled. This will prevent that as a general utility.
+ */
+export const featureFlagEnabled = (disabledSettingState?: boolean): boolean =>
+  disabledSettingState === false;
+
 export const makeCardVisible = (id: string): void => {
   setTimeout(() => {
     const element = document.getElementById(id);
@@ -119,7 +126,7 @@ export const matchesSearch = (odhDoc: OdhDocument, filterText: string): boolean 
 
 export const isRedHatSupported = (app: OdhApplication): boolean => {
   const support = (app.spec.support || '').toLowerCase();
-  return support === ODH_PRODUCT_NAME || support === 'redhat';
+  return support === ODH_PRODUCT_NAME || support === 'redhat' || support === 'red hat';
 };
 
 export const getHourAndMinuteByTimeout = (timeout: number): { hour: number; minute: number } => {

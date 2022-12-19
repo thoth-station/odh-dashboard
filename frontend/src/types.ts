@@ -5,6 +5,7 @@
 import { ImageStreamKind, ImageStreamSpecTagType } from './k8sTypes';
 import { EitherNotBoth } from './typeHelpers';
 import { EnvironmentFromVariable } from './pages/projects/types';
+import { ServingRuntimeSize } from 'pages/modelServing/screens/types';
 
 export type PrometheusResponse = {
   data: {
@@ -30,6 +31,7 @@ export type DashboardConfig = K8sResourceCommon & {
       allowedGroups: string;
     };
     notebookSizes?: NotebookSize[];
+    modelServerSizes?: ServingRuntimeSize[];
     notebookController?: {
       enabled: boolean;
       pvcSize?: string;
@@ -51,6 +53,7 @@ export type DashboardCommonConfig = {
   disableAppLauncher: boolean;
   disableUserManagement: boolean;
   disableProjects: boolean;
+  disableModelServing: boolean;
 };
 
 export type NotebookControllerUserState = {
@@ -274,6 +277,7 @@ export type TrackingEventProperties = {
   GPU?: number;
   lastSelectedSize?: string;
   lastSelectedImage?: string;
+  projectName?: string;
 };
 
 export type NotebookPort = {
@@ -427,6 +431,9 @@ export type CREImageStreamDetails = {
 // CRE resource extracted details
 export type CREResourceDetails = {
   id: string;
+  name: string;
+  user: string;
+  description?: string;
   uploaded: Date;
   lastCondition?: {
     lastTransitionTime?: string;
@@ -711,6 +718,7 @@ export type NotebookData = {
   gpus: number;
   envVars: EnvVarReducedTypeKeyValues;
   state: NotebookState;
+  // only used for admin calls, regular users cannot use this field
   username?: string;
 };
 
@@ -730,4 +738,11 @@ export type GPUInfo = {
   configured: boolean;
   available: number;
   autoscalers: gpuScale[];
+};
+
+export type ContextResourceData<T> = {
+  data: T[];
+  loaded: boolean;
+  error?: Error;
+  refresh: () => void;
 };

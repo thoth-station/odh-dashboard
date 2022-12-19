@@ -24,7 +24,7 @@ const ExistingPVCField: React.FC<ExistingPVCFieldProps> = ({
   selectDirection = 'down',
   menuAppendTo = 'parent',
 }) => {
-  const [isOpen, setOpen] = React.useState<boolean>(false);
+  const [isOpen, setOpen] = React.useState(false);
 
   if (loadError) {
     return (
@@ -47,6 +47,7 @@ const ExistingPVCField: React.FC<ExistingPVCFieldProps> = ({
   return (
     <FormGroup isRequired label="Persistent storage" fieldId={fieldId}>
       <Select
+        removeFindDomNode
         variant="typeahead"
         selections={selectedStorage}
         isOpen={isOpen}

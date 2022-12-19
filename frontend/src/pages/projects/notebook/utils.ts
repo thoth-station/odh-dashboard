@@ -1,6 +1,7 @@
 import { EventKind, NotebookKind } from '../../../k8sTypes';
 import { EventStatus, NotebookStatus } from '../../../types';
 import { useWatchNotebookEvents } from './useWatchNotebookEvents';
+import { ROOT_MOUNT_PATH } from '../pvc/const';
 
 export const hasStopAnnotation = (notebook: NotebookKind): boolean => {
   return !!(
@@ -9,13 +10,56 @@ export const hasStopAnnotation = (notebook: NotebookKind): boolean => {
   );
 };
 
+export const getNotebookPVCVolumeNames = (notebook: NotebookKind): { [name: string]: string } =>
+  (notebook.spec.template.spec.volumes || []).reduce((acc, volume) => {
+    if (!volume.persistentVolumeClaim?.claimName) {
+      return acc;
+    }
+
+    return {
+      ...acc,
+      [volume.name]: volume.persistentVolumeClaim.claimName,
+    };
+  }, {});
+
+const relativeMountPath = (mountPath: string): string =>
+  mountPath.slice(ROOT_MOUNT_PATH.length) || '/';
+
+export const getNotebookPVCMountPathMap = (
+  notebook?: NotebookKind,
+): { [claimName: string]: string } => {
+  if (!notebook) {
+    return {};
+  }
+
+  const pvcVolumeNames = getNotebookPVCVolumeNames(notebook);
+
+  return notebook.spec.template.spec.containers.reduce((acc, container) => {
+    return {
+      ...acc,
+      ...(container.volumeMounts || []).reduce((acc, volumeMount) => {
+        const claimName = pvcVolumeNames[volumeMount.name];
+        if (!claimName) {
+          return acc;
+        }
+
+        return { ...acc, [claimName]: relativeMountPath(volumeMount.mountPath) };
+      }, {}),
+    };
+  }, {});
+};
+
 export const getNotebookMountPaths = (notebook?: NotebookKind): string[] => {
   if (!notebook) {
     return [];
   }
 
   return notebook.spec.template.spec.containers
-    .map((container) => container.volumeMounts?.map((volumeMount) => volumeMount.mountPath) || [])
+    .map(
+      (container) =>
+        container.volumeMounts?.map((volumeMount) => relativeMountPath(volumeMount.mountPath)) ||
+        [],
+    )
     .flat();
 };
 

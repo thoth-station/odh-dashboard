@@ -51,8 +51,6 @@ export const ExistingImageForm: React.FC<ExistingImageFormProps> = ({ state, val
   const [sourceIsOpen, setSourceIsOpen] = React.useState<boolean>(false);
   const { images, loaded, loadError } = useWatchImages();
 
-  console.log(state);
-
   const sourceOptions = useMemo(() => {
     const options: {
       value: string;

@@ -17,12 +17,14 @@ export type DashboardConfig = K8sResourceCommon & {
       disableAppLauncher: boolean;
       disableUserManagement: boolean;
       disableProjects: boolean;
+      disableModelServing: boolean;
     };
     groupsConfig?: {
       adminGroups: string;
       allowedGroups: string;
     };
     notebookSizes?: NotebookSize[];
+    modelServerSizes?: ModelServerSize[];
     notebookController?: {
       enabled: boolean;
       pvcSize?: string;
@@ -32,6 +34,22 @@ export type DashboardConfig = K8sResourceCommon & {
         key: string;
       };
     };
+  };
+};
+
+export type ModelServerSize = {
+  name: string;
+  resources: ModelServerResources;
+};
+
+export type ModelServerResources = {
+  limits: {
+    cpu: string;
+    memory: string;
+  };
+  requests: {
+    cpu: string;
+    memory: string;
   };
 };
 
@@ -208,6 +226,7 @@ export type KubeDecorator = KubeStatus & {
   batchV1Api: k8s.BatchV1Api;
   customObjectsApi: k8s.CustomObjectsApi;
   rbac: k8s.RbacAuthorizationV1Api;
+  currentToken: string;
 };
 
 export type KubeFastifyInstance = FastifyInstance & {
@@ -532,6 +551,9 @@ export type CREImageStreamDetails = {
 // CRE resource extracted details
 export type CREResourceDetails = {
   id: string
+  name: string;
+  user: string;
+  description?: string;
   uploaded: Date;
   lastCondition?: {
     lastTransitionTime?: string
