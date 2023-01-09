@@ -110,7 +110,7 @@ export const postCRE = async (
     }
   }
   else if (body.buildType === 'GitRepository') {
-    if (!body.gitRef || !body.repository) {
+    if (!body.repository) {
       return {
         success: false,
         error: "Parameters 'gitRef' and 'repository' are expected when using buildType: 'GitRepository'",

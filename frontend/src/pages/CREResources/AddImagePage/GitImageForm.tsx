@@ -13,7 +13,6 @@ export type GitImageFormType = {
   valid: {
     repository: boolean;
     name: boolean;
-    gitRef: boolean;
   };
 };
 
@@ -48,16 +47,11 @@ export const GitImageForm: React.FC<GitImageFormProps> = ({ state, valid, setVal
       </FormGroup>
       <FormGroup
         label="Git Reference"
-        isRequired
         fieldId="git-ref-image-repository-label"
-        helperText="Git reference of selected git repo."
-        helperTextInvalid="This field is required."
-        helperTextInvalidIcon={<ExclamationCircleIcon />}
-        validated={valid.gitRef || state.gitRef === '' ? undefined : 'error'}
+        helperText="You can specify an alternative branch, tag or commit reference within the git repository to build from."
       >
         <TextInput
           id="byon-image-git-ref-input"
-          isRequired
           type="text"
           data-id="byon-image-git-ref-input"
           name="byon-image-git-ref-input"

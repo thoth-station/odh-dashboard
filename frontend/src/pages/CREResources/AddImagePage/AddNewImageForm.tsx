@@ -58,12 +58,11 @@ export const AddNewImageForm: React.FC = () => {
       repository: '',
       name: '',
       description: '',
-      gitRef: 'master'
+      gitRef: ''
     },
     valid: {
       repository: false,
       name: false,
-      gitRef: true,
     },
   };
   // default state for "build image" form
@@ -202,13 +201,6 @@ export const AddNewImageForm: React.FC = () => {
             formDispatch({ type: 'validate', key: 'repository', value: true });
           } else {
             formDispatch({ type: 'validate', key: 'repository', value: false });
-            valid = false;
-          }
-
-          if (formState.state.repository.length > 0) {
-            formDispatch({ type: 'validate', key: 'gitRef', value: true });
-          } else {
-            formDispatch({ type: 'validate', key: 'gitRef', value: false });
             valid = false;
           }
           break;
