@@ -6,6 +6,7 @@ import {
   CREResource,
   CREResourceCreateRequest,
   KubeFastifyInstance,
+  CREGitRepositorySpec,
 } from '../../../types';
 import { FastifyRequest } from 'fastify';
 import { getImageList } from '../images/imageUtils';
@@ -86,7 +87,7 @@ export const postCRE = async (
     return { success: false, error: 'Unable to add CRE resource: ' + body.name };
   }
 
-  let spec: CREPackageListSpec | CREImageImportSpec;
+  let spec: CREPackageListSpec | CREImageImportSpec | CREGitRepositorySpec;
 
   if (body.buildType === 'ImageImport') {
     if (!body.fromImage) {
@@ -106,6 +107,20 @@ export const postCRE = async (
         name: body.imagePullSecretName,
       };
     }
+  }
+  else if (body.buildType === 'GitRepository') {
+    if (!body.repository) {
+      return {
+        success: false,
+        error: "Parameters 'gitRef' and 'repository' are expected when using buildType: 'GitRepository'",
+      };
+    }
+
+    spec = {
+      buildType: 'GitRepository',
+      repository: body.repository,
+      gitRef: body.gitRef,
+    } as CREGitRepositorySpec;
   } else if (body.buildType === 'PackageList') {
     if (body.baseImage) {
       spec = {
